@@ -1,0 +1,53 @@
+# C++
+*.exe
+*.obj
+*.o
+*.out
+*.dll
+*.so
+*.dylib
+/build/
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/
+Makefile
+
+# Rust
+target/
+Cargo.lock
+*.rs.bk
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env/
+venv/
+.env
+venv
+
+# Go
+bin/
+*.exe
+*.test
+*.out
+*.log
+
+# General
+*.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Ignore local environment files
+.env.local
+.env.*.local
+
+# Ignore shared-data generated files
+shared-data/*.csv
+shared-data/*.tsv
+shared-data/*.json
