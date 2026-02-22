@@ -1,27 +1,41 @@
-# C++ Dice Rolling Implementation
+# C++ DiceLab Implementation
 
-This directory contains the C++ implementation for the dice rolling application.
+This directory contains the spec-aligned C++ implementation of DiceLab.
 
 ## Structure
 
-- `src/Dice.h` and `src/Dice.cpp`: Defines and implements the `Dice` class, which encapsulates dice rolling logic.
-- `src/main.cpp`: Entry point demonstrating or running dice rolls.
+- `src/Dice.h` and `src/Dice.cpp`: Dice object + RNG behavior.
+- `src/main.cpp`: CLI parsing, simulation, statistics, and output formatting.
 
-## Build Instructions
+Keeping code under `src/` is a good practice (and not overkill), especially for a portfolio project where multiple build artifacts may be added later.
 
-You can build the project using a C++11 or newer compiler. Example with g++:
+## Build
 
-    g++ -std=c++11 -o dice src/main.cpp src/Dice.cpp
+Use optimized flags for benchmark-ready binaries:
 
-This will produce an executable named `dice`.
+```bash
+g++ -std=c++17 -O3 -o dice-lab src/main.cpp src/Dice.cpp
+```
 
-## Usage
+## CLI Usage
 
-Run the executable after building:
+```bash
+./dice-lab --rolls 10000
+./dice-lab --rolls 10000 --seed 42 --format json
+./dice-lab --rolls 10000 --sides 20 --format csv
+./dice-lab --help
+```
 
-    ./dice
+## Supported Flags
 
-## Notes
+- `--rolls <int>` (required, must be `> 0`)
+- `--sides <int>` (optional, default `6`, must be `>= 2`)
+- `--seed <int>` (optional, deterministic within this implementation)
+- `--format <text|json|csv>` (optional, default `text`)
+- `--parallel` (recognized, currently returns a clear unsupported message)
 
-- Ensure your compiler supports C++11 or newer.
-- Update this README if you add features or change the structure.
+## Exit Codes
+
+- `0` success
+- `1` input/CLI error
+- `2` internal execution error

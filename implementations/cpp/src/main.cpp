@@ -1,40 +1,260 @@
-// Include standard input/output library for std::cout printing to console
+// Include standard input/output library for console output
 #include <iostream>
-
-// Include vector library to hold roll counts (like a resizable array)
+#include <iomanip>
+#include <sstream>
+#include <string>
 #include <vector>
+#include <cmath>
+#include <stdexcept>
 
 // Include our Dice class declaration so we can create/use Dice objects
 #include "Dice.h"
 
-int main() {
-    // Create a standard 6-sided die using the Dice constructor from Dice.app
-    Dice d6(6);
+namespace {
+    struct CliOptions {
+        int rolls = 0;
+        int sides = 6;
+        bool hasSeed = false;
+        int seed = 0;
+        std::string format = "text";
+        bool parallel = false;
+        bool showHelp = false;
+    };
 
-    // Number of times we'll roll the die
-    const int rolls = 10000;
+    struct SimulationResult {
+        int totalRolls;
+        int sides;
+        std::vector<long long> distribution;
+        double mean;
+        double variance;
+        double stdDev;
+    };
 
-    // Create vector of 6 integers, all initialized to 0
-    // Index 0 = count of 1s, Index 1 = count of 2s, ... , Index 5 = count of 6s
-    std::vector<int> counts(6, 0);
-
-    // Loop to simiulate rolling the die 'rolls' times, initially 10,000 from above
-    for (int i=0; i < rolls; ++i) {
-        // Roll the die, get random number 1-6
-        int result = d6.roll();
-        // Store in counts: result=1 => counts[0]++, result=2 => counts[1]++, ... , result=6 => counts[5]++
-        counts[result - 1]++;
+    void printHelp() {
+        std::cout
+            << "Usage: dice-lab --rolls <int> [options]\n"
+            << "\n"
+            << "Required:\n"
+            << "  --rolls <int>      Total number of rolls (must be > 0)\n"
+            << "\n"
+            << "Optional:\n"
+            << "  --sides <int>      Number of die sides (must be >= 2, default: 6)\n"
+            << "  --seed <int>       Seed for deterministic RNG\n"
+            << "  --format <string>  Output format: text|json|csv (default: text)\n"
+            << "  --parallel         Request parallel mode (unsupported in this baseline)\n"
+            << "  --help             Show this help message\n"
+            << "\n"
+            << "Example:\n"
+            << "  dice-lab --rolls 10000 --sides 20 --seed 42 --format json\n";
     }
 
-    // Print header showing total rolls performed
-    std::cout << "D6 roll results (" << rolls << " rolls):\n";
+    int parseInt(const std::string& value, const std::string& flagName) {
+        size_t parsedLength = 0;
+        int parsedValue = 0;
+        try {
+            parsedValue = std::stoi(value, &parsedLength);
+        } catch (...) {
+            throw std::invalid_argument(flagName + " must be an integer.");
+        }
 
-    // Loop through results 1-6 and print counts
-    for (int i = 0; i < 6; ++i) {
-        // i+1 converts index back to die face (e.g. index 0 = face 1)
-        std::cout << (i + 1) << ": " << counts[i] << "\n";
+        if (parsedLength != value.size()) {
+            throw std::invalid_argument(flagName + " must be an integer.");
+        }
+
+        return parsedValue;
     }
 
-    // return 0 = program successful completion 
-    return 0;
+    CliOptions parseArgs(int argc, char* argv[]) {
+        CliOptions options;
+        bool rollsProvided = false;
+
+        for (int index = 1; index < argc; ++index) {
+            const std::string argument = argv[index];
+
+            if (argument == "--help") {
+                options.showHelp = true;
+                continue;
+            }
+
+            if (argument == "--parallel") {
+                options.parallel = true;
+                continue;
+            }
+
+            if (index + 1 >= argc) {
+                throw std::invalid_argument("Missing value for " + argument + ".");
+            }
+
+            const std::string value = argv[++index];
+            if (argument == "--rolls") {
+                options.rolls = parseInt(value, "--rolls");
+                rollsProvided = true;
+            } else if (argument == "--sides") {
+                options.sides = parseInt(value, "--sides");
+            } else if (argument == "--seed") {
+                options.seed = parseInt(value, "--seed");
+                options.hasSeed = true;
+            } else if (argument == "--format") {
+                options.format = value;
+            } else {
+                throw std::invalid_argument("Unsupported argument: " + argument + ".");
+            }
+        }
+
+        if (options.showHelp) {
+            return options;
+        }
+
+        if (!rollsProvided) {
+            throw std::invalid_argument("Missing required argument: --rolls");
+        }
+        if (options.rolls <= 0) {
+            throw std::invalid_argument("--rolls must be greater than 0.");
+        }
+        if (options.sides < 2) {
+            throw std::invalid_argument("--sides must be greater than or equal to 2.");
+        }
+        if (options.format != "text" && options.format != "json" && options.format != "csv") {
+            throw std::invalid_argument("--format must be one of: text, json, csv.");
+        }
+
+        return options;
+    }
+
+    SimulationResult runSimulation(const CliOptions& options) {
+        Dice dice(options.sides, options.hasSeed, options.seed);
+        std::vector<long long> counts(static_cast<size_t>(options.sides), 0);
+
+        double total = 0.0;
+        double totalSquares = 0.0;
+
+        for (int iteration = 0; iteration < options.rolls; ++iteration) {
+            const int value = dice.roll();
+            counts[static_cast<size_t>(value - 1)]++;
+            total += static_cast<double>(value);
+            totalSquares += static_cast<double>(value) * static_cast<double>(value);
+        }
+
+        const double mean = total / static_cast<double>(options.rolls);
+        double variance = (totalSquares / static_cast<double>(options.rolls)) - (mean * mean);
+        if (variance < 0.0) {
+            variance = 0.0;
+        }
+
+        return SimulationResult{
+            options.rolls,
+            options.sides,
+            counts,
+            mean,
+            variance,
+            std::sqrt(variance)
+        };
+    }
+
+    std::string formatText(const SimulationResult& result) {
+        std::ostringstream output;
+        output << "DiceLab Results\n";
+        output << "Total rolls: " << result.totalRolls << "\n";
+        output << "Sides: " << result.sides << "\n";
+        output << "Distribution\n";
+        output << "face | count | percentage\n";
+
+        output << std::fixed << std::setprecision(4);
+        for (int face = 1; face <= result.sides; ++face) {
+            const long long count = result.distribution[static_cast<size_t>(face - 1)];
+            const double percentage = (static_cast<double>(count) / static_cast<double>(result.totalRolls)) * 100.0;
+            output << face << " | " << count << " | " << percentage << "\n";
+        }
+
+        output << "\nSummary Statistics\n";
+        output << std::fixed << std::setprecision(6);
+        output << "Mean: " << result.mean << "\n";
+        output << "Variance: " << result.variance << "\n";
+        output << "Std Dev: " << result.stdDev;
+        return output.str();
+    }
+
+    std::string formatJson(const SimulationResult& result) {
+        std::ostringstream output;
+        output << "{\n";
+        output << "  \"total_rolls\": " << result.totalRolls << ",\n";
+        output << "  \"sides\": " << result.sides << ",\n";
+        output << "  \"distribution\": {\n";
+
+        for (int face = 1; face <= result.sides; ++face) {
+            const long long count = result.distribution[static_cast<size_t>(face - 1)];
+            output << "    \"" << face << "\": " << count;
+            if (face < result.sides) {
+                output << ",";
+            }
+            output << "\n";
+        }
+
+        output << "  },\n";
+        output << std::fixed << std::setprecision(6);
+        output << "  \"mean\": " << result.mean << ",\n";
+        output << "  \"variance\": " << result.variance << ",\n";
+        output << "  \"std_dev\": " << result.stdDev << "\n";
+        output << "}";
+        return output.str();
+    }
+
+    std::string formatCsv(const SimulationResult& result) {
+        std::ostringstream output;
+        output << "face,count,percentage\n";
+
+        output << std::fixed << std::setprecision(4);
+        for (int face = 1; face <= result.sides; ++face) {
+            const long long count = result.distribution[static_cast<size_t>(face - 1)];
+            const double percentage = (static_cast<double>(count) / static_cast<double>(result.totalRolls)) * 100.0;
+            output << face << "," << count << "," << percentage << "\n";
+        }
+
+        output << "\nsummary_metric,value\n";
+        output << "total_rolls," << result.totalRolls << "\n";
+        output << "sides," << result.sides << "\n";
+        output << std::fixed << std::setprecision(6);
+        output << "mean," << result.mean << "\n";
+        output << "variance," << result.variance << "\n";
+        output << "std_dev," << result.stdDev;
+        return output.str();
+    }
+
+    std::string renderOutput(const SimulationResult& result, const std::string& format) {
+        if (format == "text") {
+            return formatText(result);
+        }
+        if (format == "json") {
+            return formatJson(result);
+        }
+        if (format == "csv") {
+            return formatCsv(result);
+        }
+        throw std::invalid_argument("Unsupported format: " + format);
+    }
+}
+
+int main(int argc, char* argv[]) {
+    try {
+        const CliOptions options = parseArgs(argc, argv);
+
+        if (options.showHelp) {
+            printHelp();
+            return 0;
+        }
+
+        if (options.parallel) {
+            throw std::invalid_argument("--parallel is not supported yet in C++ baseline.");
+        }
+
+        const SimulationResult result = runSimulation(options);
+        std::cout << renderOutput(result, options.format) << "\n";
+        return 0;
+    } catch (const std::invalid_argument& error) {
+        std::cerr << "Input error: " << error.what() << "\n";
+        return 1;
+    } catch (const std::exception& error) {
+        std::cerr << "Internal error: " << error.what() << "\n";
+        return 2;
+    }
 }
