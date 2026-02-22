@@ -1,4 +1,4 @@
-# Project Name
+# functional_spec.md
 DiceLab - A Multi-Language Dice Simulation and Benchmarking Study
 
 ## Purpose
