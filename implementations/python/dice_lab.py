@@ -117,6 +117,8 @@ def format_text(result: SimulationResult) -> str:
         pct = (count / result.total_rolls) * 100
         lines.append(f"{face} | {count} | {pct:.4f}")
 
+    lines.append("")
+    lines.append("Summary Statistics")
     lines.append(f"Mean: {result.mean:.6f}")
     lines.append(f"Variance: {result.variance:.6f}")
     lines.append(f"Std Dev: {result.std_dev:.6f}")
@@ -150,7 +152,7 @@ def format_csv(result: SimulationResult) -> str:
 
     # Summary block so CSV still exposes the required aggregate metrics.
     writer.writerow([])
-    writer.writerow(["metric", "value"])
+    writer.writerow(["summary_metric", "value"])
     writer.writerow(["total_rolls", result.total_rolls])
     writer.writerow(["sides", result.sides])
     writer.writerow(["mean", f"{result.mean:.6f}"])

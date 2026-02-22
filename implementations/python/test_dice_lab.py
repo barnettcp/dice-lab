@@ -34,6 +34,16 @@ class DiceLabTests(unittest.TestCase):
         code = dice_lab.main(["--rolls", "10", "--parallel"])
         self.assertEqual(code, 1)
 
+    def test_text_output_has_summary_statistics_section(self) -> None:
+        result = dice_lab.run_simulation(rolls=25, sides=6, seed=5)
+        output = dice_lab.format_text(result)
+        self.assertIn("Summary Statistics", output)
+
+    def test_csv_output_has_separated_summary_block(self) -> None:
+        result = dice_lab.run_simulation(rolls=25, sides=6, seed=5)
+        output = dice_lab.format_csv(result)
+        self.assertIn("summary_metric,value", output)
+
 
 if __name__ == "__main__":
     unittest.main()
