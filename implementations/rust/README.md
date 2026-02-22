@@ -1,8 +1,8 @@
 # Rust DiceLab Implementation
 
-Status: planned (not yet implemented).
+Status: baseline implemented.
 
-This folder will contain the Rust implementation of DiceLab aligned with the shared project specs.
+This folder contains a spec-aligned Rust implementation of DiceLab.
 
 ## Target Specs
 
@@ -11,30 +11,48 @@ This folder will contain the Rust implementation of DiceLab aligned with the sha
 - [../../spec/output_spec.md](../../spec/output_spec.md)
 - [../../spec/benchmark_spec.md](../../spec/benchmark_spec.md)
 
-## Planned CLI Contract
+## Build
 
-The Rust implementation is expected to support:
+From this folder:
+
+```bash
+cargo build --release
+```
+
+The binary will be produced at:
+
+`target/release/dice-lab` (or `dice-lab.exe` on Windows)
+
+## Run Examples
+
+From this folder:
+
+```bash
+cargo run --release -- --rolls 10000
+cargo run --release -- --rolls 10000 --seed 42 --format json
+cargo run --release -- --rolls 10000 --sides 20 --format csv
+cargo run --release -- --help
+```
+
+## Implemented CLI Contract
 
 - `--rolls <int>` (required)
 - `--sides <int>` (optional, default `6`)
 - `--seed <int>` (optional)
 - `--format <text|json|csv>` (optional, default `text`)
-- `--parallel` (optional, may be unsupported in baseline)
+- `--parallel` (recognized, intentionally unsupported in baseline)
 - `--help`
 
-## Planned Output Contract
+## Output Contract
 
 - Deterministic ordering by face value ascending
 - Required fields: total rolls, sides, distribution, mean, variance, std dev
-- `text`, `json`, `csv` output parity with other implementations
-- Timing/performance metrics reported via benchmark tooling artifacts, not normal CLI output
+- Supports `text`, `json`, and `csv`
+- Timing/performance metrics stay in benchmark artifacts, not normal CLI output
 
-## Build and Run (To Be Added)
+## Learning Notes
 
-Build and run commands will be documented here once implementation begins.
-
-## Notes
-
-- Keep this implementation self-contained and idiomatic to Rust.
-- Avoid algorithm changes that would break cross-language comparability.
-- Update this README as milestones are completed.
+- `src/main.rs` is heavily commented for Rust beginners.
+- `clap` is used for command-line parsing.
+- `rand::rngs::StdRng` is used for deterministic seeded runs.
+- Statistics use streaming aggregation (sum and sum-of-squares).
