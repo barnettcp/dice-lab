@@ -64,6 +64,28 @@ As Rust and Go implementations are completed, keep their local READMEs aligned w
 
 Current benchmark scripts live in [benchmarks](benchmarks).
 
+### Benchmark Runner Usage
+
+The benchmark orchestrator is [benchmarks/benchmark_runner.py](benchmarks/benchmark_runner.py).
+
+Examples:
+
+- Python only (default):
+	- `python benchmarks/benchmark_runner.py`
+- Multi-language (Python + C++ + Rust):
+	- `python benchmarks/benchmark_runner.py --languages python cpp rust`
+
+Optional controls:
+
+- `--runs <int>` for repetition count per workload
+- `--sides <int>` for side count (default benchmark baseline is 6)
+- `--output <path>` for report destination
+
+Notes:
+
+- C++ and Rust binaries must be built before multi-language runs.
+- Benchmark timing excludes compile time (compile separately).
+
 ## Portfolio/Analysis Guidance
 
 When publishing results:
