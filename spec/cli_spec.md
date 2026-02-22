@@ -42,7 +42,7 @@ Example:
 - Description: Number of sides on the die.
 
 Example:
-`dice-lab --rolls --sides 20`
+`dice-lab --rolls 10000 --sides 20`
 
 
 
