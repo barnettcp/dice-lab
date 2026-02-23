@@ -11,6 +11,7 @@
 #include "Dice.h"
 
 namespace {
+    // Parsed CLI state used throughout program flow.
     struct CliOptions {
         int rolls = 0;
         int sides = 6;
@@ -68,6 +69,7 @@ namespace {
         CliOptions options;
         bool rollsProvided = false;
 
+        // Single forward pass over argv keeps parsing logic simple and explicit.
         for (int index = 1; index < argc; ++index) {
             const std::string argument = argv[index];
 
@@ -122,6 +124,7 @@ namespace {
     }
 
     SimulationResult runSimulation(const CliOptions& options) {
+        // Dice handles RNG details; this function focuses on aggregation + stats.
         Dice dice(options.sides, options.hasSeed, options.seed);
         std::vector<long long> counts(static_cast<size_t>(options.sides), 0);
 

@@ -37,12 +37,14 @@ func main() {
 }
 
 func run(args []string) int {
+	// Phase 1: parse/validate CLI input.
 	options, err := parseAndValidateArgs(args)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Input error: %v\n", err)
 		return 1
 	}
 
+	// Phase 2: run simulation and render output.
 	result := runSimulation(options)
 	output, err := renderOutput(result, options.Format)
 	if err != nil {
@@ -176,6 +178,7 @@ func runSimulation(options CliOptions) SimulationResult {
 }
 
 func renderOutput(result SimulationResult, format string) (string, error) {
+	// Tight dispatch keeps format support explicit and avoids silent fallbacks.
 	switch format {
 	case "text":
 		return formatText(result), nil

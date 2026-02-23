@@ -59,6 +59,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
     args = parser.parse_args(argv)
 
+    # Keep all input rule checks in one place to make CLI behavior easy to audit.
     if args.rolls <= 0:
         raise ValueError("--rolls must be greater than 0.")
     if args.sides < 2:
@@ -163,6 +164,7 @@ def format_csv(result: SimulationResult) -> str:
 
 
 def render_output(result: SimulationResult, output_format: str) -> str:
+    # Explicit dispatch keeps supported formats obvious and strict.
     if output_format == "text":
         return format_text(result)
     if output_format == "json":

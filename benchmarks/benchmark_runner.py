@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+# Benchmark workloads from spec/benchmark_spec.md.
 WORKLOADS = (100, 1_000, 10_000, 100_000)
 DEFAULT_RUNS = 5
 SUPPORTED_LANGUAGES = ("python", "cpp", "rust", "go")
@@ -50,6 +51,7 @@ def parse_args(argv: list[str]) -> BenchmarkConfig:
     if args.sides < 2:
         raise ValueError("--sides must be at least 2")
 
+    # Normalizing once here keeps downstream logic simpler.
     normalized_languages = tuple(language.lower() for language in args.languages)
     unsupported = [language for language in normalized_languages if language not in SUPPORTED_LANGUAGES]
     if unsupported:
@@ -182,6 +184,7 @@ def build_command(language: str, repo_root: Path, rolls: int, sides: int) -> tup
 
 
 def run_single_measurement_ms(command: list[str], cwd: Path) -> float:
+    # We capture output to avoid console I/O noise affecting timing.
     start = time.perf_counter()
     subprocess.run(command, cwd=cwd, check=True, capture_output=True, text=True)
     end = time.perf_counter()
@@ -189,6 +192,7 @@ def run_single_measurement_ms(command: list[str], cwd: Path) -> float:
 
 
 def summarize_timings(values: list[float]) -> dict[str, float | list[float]]:
+    # Mean + standard deviation support both quick comparison and stability checks.
     mean_value = statistics.fmean(values)
     std_dev = statistics.stdev(values) if len(values) > 1 else 0.0
     return {
@@ -210,6 +214,7 @@ def build_language_report(config: BenchmarkConfig, repo_root: Path, language: st
             sides=config.sides,
         )
         measurements = [
+            # Repeated process launches match benchmark spec expectations.
             run_single_measurement_ms(command=command, cwd=cwd)
             for _ in range(config.runs)
         ]
@@ -234,6 +239,7 @@ def build_language_report(config: BenchmarkConfig, repo_root: Path, language: st
 def build_report(config: BenchmarkConfig) -> dict:
     repo_root = get_repo_root()
 
+    # Validate prerequisites up front so we fail before any long benchmark run starts.
     for language in config.languages:
         ensure_language_ready(language, repo_root)
 

@@ -61,6 +61,7 @@ struct SimulationResult {
 }
 
 fn validate(cli: Cli) -> Result<ValidatedCli, String> {
+    // Centralized validation keeps CLI rule handling consistent and testable.
     if cli.rolls <= 0 {
         return Err("--rolls must be greater than 0.".to_string());
     }
@@ -209,6 +210,7 @@ fn run(cli: Cli) -> Result<(), String> {
 }
 
 fn main() -> ExitCode {
+    // catch_unwind gives us a consistent exit code (2) for unexpected failures.
     let outcome = std::panic::catch_unwind(|| {
         let cli = match Cli::try_parse() {
             Ok(parsed) => parsed,
