@@ -1,8 +1,8 @@
 # Go DiceLab Implementation
 
-Status: planned (not yet implemented).
+Status: baseline implemented.
 
-This folder will contain the Go implementation of DiceLab aligned with the shared project specs.
+This folder contains a spec-aligned Go implementation of DiceLab.
 
 ## Target Specs
 
@@ -11,30 +11,45 @@ This folder will contain the Go implementation of DiceLab aligned with the share
 - [../../spec/output_spec.md](../../spec/output_spec.md)
 - [../../spec/benchmark_spec.md](../../spec/benchmark_spec.md)
 
-## Planned CLI Contract
+## Build
 
-The Go implementation is expected to support:
+From this folder:
+
+```bash
+go build -o dice-lab .
+```
+
+## Run Examples
+
+From this folder:
+
+```bash
+./dice-lab --rolls 10000
+./dice-lab --rolls 10000 --seed 42 --format json
+./dice-lab --rolls 10000 --sides 20 --format csv
+./dice-lab --help
+```
+
+## Implemented CLI Contract
 
 - `--rolls <int>` (required)
 - `--sides <int>` (optional, default `6`)
 - `--seed <int>` (optional)
 - `--format <text|json|csv>` (optional, default `text`)
-- `--parallel` (optional, may be unsupported in baseline)
+- `--parallel` (recognized, intentionally unsupported in baseline)
 - `--help`
 
-## Planned Output Contract
+## Output Contract
 
 - Deterministic ordering by face value ascending
 - Required fields: total rolls, sides, distribution, mean, variance, std dev
-- `text`, `json`, `csv` output parity with other implementations
-- Timing/performance metrics reported via benchmark tooling artifacts, not normal CLI output
+- Supports `text`, `json`, and `csv`
+- Timing/performance metrics stay in benchmark artifacts, not normal CLI output
 
-## Build and Run (To Be Added)
+## Learning Notes
 
-Build and run commands will be documented here once implementation begins.
-
-## Notes
-
-- Keep this implementation self-contained and idiomatic to Go.
-- Avoid algorithm changes that would break cross-language comparability.
-- Update this README as milestones are completed.
+- `main.go` is commented for Go beginners.
+- Standard `flag` package is used for CLI parsing.
+- `rand.New(rand.NewSource(seed))` enables deterministic seeded runs.
+- `strings.Builder` is used to build output efficiently.
+- Statistics use streaming aggregation (sum and sum-of-squares).

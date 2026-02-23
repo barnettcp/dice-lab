@@ -33,6 +33,7 @@ bin/
 *.test
 *.out
 *.log
+implementations/go/dice-lab
 
 # General
 *.log
