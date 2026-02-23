@@ -14,7 +14,7 @@ from pathlib import Path
 
 WORKLOADS = (100, 1_000, 10_000, 100_000)
 DEFAULT_RUNS = 5
-SUPPORTED_LANGUAGES = ("python", "cpp", "rust")
+SUPPORTED_LANGUAGES = ("python", "cpp", "rust", "go")
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ def parse_args(argv: list[str]) -> BenchmarkConfig:
         "--languages",
         nargs="+",
         default=["python"],
-        help="Languages to benchmark. Supported: python cpp rust",
+        help="Languages to benchmark. Supported: python cpp rust go",
     )
     args = parser.parse_args(argv)
 
@@ -84,6 +84,11 @@ def get_rust_binary_path(repo_root: Path) -> Path:
     return repo_root / "implementations" / "rust" / "target" / "release" / binary_name
 
 
+def get_go_binary_path(repo_root: Path) -> Path:
+    binary_name = "dice-lab.exe" if os.name == "nt" else "dice-lab"
+    return repo_root / "implementations" / "go" / binary_name
+
+
 def ensure_language_ready(language: str, repo_root: Path) -> None:
     # We fail early with targeted guidance so benchmark runs do not partially succeed.
     if language == "python":
@@ -107,6 +112,15 @@ def ensure_language_ready(language: str, repo_root: Path) -> None:
             raise ValueError(
                 "Rust release binary not found. Build first from implementations/rust with: "
                 "cargo build --release"
+            )
+        return
+
+    if language == "go":
+        go_binary = get_go_binary_path(repo_root)
+        if not go_binary.exists():
+            raise ValueError(
+                "Go binary not found. Build first from implementations/go with: "
+                "go build -o dice-lab ."
             )
         return
 
@@ -143,6 +157,18 @@ def build_command(language: str, repo_root: Path, rolls: int, sides: int) -> tup
     if language == "rust":
         command = [
             str(get_rust_binary_path(repo_root)),
+            "--rolls",
+            str(rolls),
+            "--sides",
+            str(sides),
+            "--format",
+            "text",
+        ]
+        return command, repo_root
+
+    if language == "go":
+        command = [
+            str(get_go_binary_path(repo_root)),
             "--rolls",
             str(rolls),
             "--sides",
