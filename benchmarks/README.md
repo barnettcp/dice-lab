@@ -14,7 +14,20 @@ From repo root:
 ```bash
 python benchmarks/benchmark_runner.py
 python benchmarks/benchmark_runner.py --languages python cpp rust go java
+python benchmarks/benchmark_runner.py --languages python cpp rust go java --runs 5 --batch-runs 100
 ```
+
+Parameter intent:
+
+- `--runs`: per-workload trials inside each batch
+- `--batch-runs`: number of full benchmark cycles (macro-level `run_id` count)
+
+Output shape highlights:
+
+- `batch_records[*].run_id` identifies each full benchmark cycle
+- `batch_records[*].elapsed_ms` captures total time for one full cycle
+- `batch_timing_ms` summarizes full-cycle consistency across all batch runs
+- `results` contains the latest batch view for convenience
 
 ## Pre-Benchmark Build Requirements
 

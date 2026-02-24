@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import os
 import platform
@@ -21,6 +22,7 @@ SUPPORTED_LANGUAGES = ("python", "cpp", "rust", "go", "java")
 @dataclass(frozen=True)
 class BenchmarkConfig:
     runs: int
+    batch_runs: int
     sides: int
     output_file: Path
     languages: tuple[str, ...]
@@ -32,6 +34,12 @@ def parse_args(argv: list[str]) -> BenchmarkConfig:
         description="Run DiceLab benchmark workloads and emit timing report JSON.",
     )
     parser.add_argument("--runs", type=int, default=DEFAULT_RUNS)
+    parser.add_argument(
+        "--batch-runs",
+        type=int,
+        default=1,
+        help="Number of full benchmark batches to run (macro-level run_id count).",
+    )
     parser.add_argument("--sides", type=int, default=6)
     parser.add_argument(
         "--output",
@@ -48,6 +56,8 @@ def parse_args(argv: list[str]) -> BenchmarkConfig:
 
     if args.runs < 1:
         raise ValueError("--runs must be at least 1")
+    if args.batch_runs < 1:
+        raise ValueError("--batch-runs must be at least 1")
     if args.sides < 2:
         raise ValueError("--sides must be at least 2")
 
@@ -62,6 +72,7 @@ def parse_args(argv: list[str]) -> BenchmarkConfig:
 
     return BenchmarkConfig(
         runs=args.runs,
+        batch_runs=args.batch_runs,
         sides=args.sides,
         output_file=Path(args.output),
         languages=normalized_languages,
@@ -257,6 +268,38 @@ def run_single_measurement_ms(command: list[str], cwd: Path) -> float:
     return (end - start) * 1000
 
 
+def get_command_version(command: list[str], cwd: Path) -> str | None:
+    # Returns first non-empty output line for a version command, or None if unavailable.
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        output = (completed.stdout or "").strip()
+        if not output:
+            output = (completed.stderr or "").strip()
+        if not output:
+            return None
+        return output.splitlines()[0].strip()
+    except Exception:
+        return None
+
+
+def collect_toolchain_versions(repo_root: Path) -> dict[str, str | None]:
+    # Toolchain metadata improves reproducibility for article/report publishing.
+    return {
+        "python": get_command_version([sys.executable, "--version"], cwd=repo_root),
+        "cpp": get_command_version(["g++", "--version"], cwd=repo_root),
+        "rust": get_command_version(["rustc", "--version"], cwd=repo_root),
+        "go": get_command_version(["go", "version"], cwd=repo_root),
+        "java": get_command_version(["java", "-version"], cwd=repo_root),
+        "javac": get_command_version(["javac", "-version"], cwd=repo_root),
+    }
+
+
 def summarize_timings(values: list[float]) -> dict[str, float | list[float]]:
     # Mean + standard deviation support both quick comparison and stability checks.
     mean_value = statistics.fmean(values)
@@ -270,6 +313,19 @@ def summarize_timings(values: list[float]) -> dict[str, float | list[float]]:
     }
 
 
+def now_utc_iso() -> str:
+    # ISO-8601 UTC timestamp for traceability across benchmark sessions.
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def run_measurements(command: list[str], cwd: Path, runs: int) -> list[float]:
+    # These are per-workload trial timings within one batch run.
+    return [
+        run_single_measurement_ms(command=command, cwd=cwd)
+        for _ in range(runs)
+    ]
+
+
 def build_language_report(config: BenchmarkConfig, repo_root: Path, language: str) -> dict:
     report_workloads: list[dict] = []
     for rolls in WORKLOADS:
@@ -279,11 +335,8 @@ def build_language_report(config: BenchmarkConfig, repo_root: Path, language: st
             rolls=rolls,
             sides=config.sides,
         )
-        measurements = [
-            # Repeated process launches match benchmark spec expectations.
-            run_single_measurement_ms(command=command, cwd=cwd)
-            for _ in range(config.runs)
-        ]
+        # Repeated process launches match benchmark spec expectations.
+        measurement_values = run_measurements(command=command, cwd=cwd, runs=config.runs)
         report_workloads.append(
             {
                 "workload": {
@@ -291,7 +344,7 @@ def build_language_report(config: BenchmarkConfig, repo_root: Path, language: st
                     "sides": config.sides,
                     "parallel": False,
                 },
-                "timing_ms": summarize_timings(measurements),
+                "timing_ms": summarize_timings(measurement_values),
             }
         )
 
@@ -303,32 +356,66 @@ def build_language_report(config: BenchmarkConfig, repo_root: Path, language: st
 
 
 def build_report(config: BenchmarkConfig) -> dict:
+    started_at = now_utc_iso()
     repo_root = get_repo_root()
 
     # Validate prerequisites up front so we fail before any long benchmark run starts.
     for language in config.languages:
         ensure_language_ready(language, repo_root)
 
-    language_reports = [
-        build_language_report(config=config, repo_root=repo_root, language=language)
-        for language in config.languages
-    ]
+    batch_records: list[dict] = []
+    batch_elapsed_ms_values: list[float] = []
+
+    for batch_run_id in range(config.batch_runs):
+        batch_started_at = now_utc_iso()
+        batch_start_perf = time.perf_counter()
+
+        language_reports = [
+            build_language_report(config=config, repo_root=repo_root, language=language)
+            for language in config.languages
+        ]
+
+        batch_elapsed_ms = (time.perf_counter() - batch_start_perf) * 1000
+        batch_finished_at = now_utc_iso()
+
+        batch_elapsed_ms_values.append(batch_elapsed_ms)
+        batch_records.append(
+            {
+                "run_id": batch_run_id,
+                "started_at_utc": batch_started_at,
+                "finished_at_utc": batch_finished_at,
+                "elapsed_ms": batch_elapsed_ms,
+                "results": language_reports,
+            }
+        )
+
+    finished_at = now_utc_iso()
+    toolchains = collect_toolchain_versions(repo_root)
+
+    # Keep a top-level results view for convenience; this points to the latest batch.
+    latest_results = batch_records[-1]["results"]
 
     return {
         "tool": "benchmarks/benchmark_runner.py",
+        "benchmark_started_at_utc": started_at,
+        "benchmark_finished_at_utc": finished_at,
         "benchmark_config": {
+            "batch_runs": config.batch_runs,
             "runs_per_workload": config.runs,
             "sides": config.sides,
             "workloads": list(WORKLOADS),
             "languages": list(config.languages),
         },
-        "results": language_reports,
+        "batch_timing_ms": summarize_timings(batch_elapsed_ms_values),
+        "batch_records": batch_records,
+        "results": latest_results,
         "environment": {
             "os": platform.platform(),
             "python_version": platform.python_version(),
             "python_implementation": platform.python_implementation(),
             "cpu": platform.processor(),
             "cores_logical": os.cpu_count(),
+            "toolchains": toolchains,
         },
     }
 
