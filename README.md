@@ -7,7 +7,7 @@ The same core behavior is implemented in multiple languages so results can be co
 ## Repository Goals
 
 - Learn language/tooling differences through one shared problem.
-- Keep implementations functionally equivalent across Python, C++, Rust, and Go.
+- Keep implementations functionally equivalent across Python, C++, Rust, Go, and Java.
 - Benchmark performance with a reproducible workflow.
 - Publish analysis focused on trade-offs, not just raw speed.
 
@@ -28,6 +28,7 @@ If there is ambiguity, specs take precedence over implementation details.
 - [implementations/cpp](implementations/cpp)
 - [implementations/rust](implementations/rust)
 - [implementations/go](implementations/go)
+- [implementations/java](implementations/java)
 - [benchmarks](benchmarks)
 - [shared-data](shared-data)
 
@@ -53,8 +54,11 @@ Run each implementation from its own folder and follow that folder's README for 
 
 - [implementations/python/README.md](implementations/python/README.md)
 - [implementations/cpp/README.md](implementations/cpp/README.md)
+- [implementations/rust/README.md](implementations/rust/README.md)
+- [implementations/go/README.md](implementations/go/README.md)
+- [implementations/java/README.md](implementations/java/README.md)
 
-As Rust and Go implementations are completed, keep their local READMEs aligned with the same CLI usage patterns.
+Keep all implementation READMEs aligned with the same CLI usage patterns.
 
 ## Benchmarking Model
 
@@ -72,8 +76,8 @@ Examples:
 
 - Python only (default):
 	- `python benchmarks/benchmark_runner.py`
-- Multi-language (Python + C++ + Rust):
-	- `python benchmarks/benchmark_runner.py --languages python cpp rust`
+- Multi-language (Python + C++ + Rust + Go + Java):
+	- `python benchmarks/benchmark_runner.py --languages python cpp rust go java`
 
 Optional controls:
 
@@ -83,7 +87,15 @@ Optional controls:
 
 Notes:
 
-- C++ and Rust binaries must be built before multi-language runs.
+- C++ binary must be built first (from `implementations/cpp`):
+	- `g++ -std=c++17 -O3 -o dice-lab src/main.cpp src/Dice.cpp`
+- Rust release binary must be built first (from `implementations/rust`):
+	- `cargo build --release`
+- Go binary must be built first (from `implementations/go`):
+	- `go build -o dice-lab .`
+- Java classes must be compiled to `implementations/java/out` first:
+	- `mkdir -p implementations/java/out`
+	- `javac -d implementations/java/out implementations/java/src/DiceLab.java`
 - Benchmark timing excludes compile time (compile separately).
 
 ## Portfolio/Analysis Guidance

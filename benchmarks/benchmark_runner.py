@@ -15,7 +15,7 @@ from pathlib import Path
 # Benchmark workloads from spec/benchmark_spec.md.
 WORKLOADS = (100, 1_000, 10_000, 100_000)
 DEFAULT_RUNS = 5
-SUPPORTED_LANGUAGES = ("python", "cpp", "rust", "go")
+SUPPORTED_LANGUAGES = ("python", "cpp", "rust", "go", "java")
 
 
 @dataclass(frozen=True)
@@ -42,7 +42,7 @@ def parse_args(argv: list[str]) -> BenchmarkConfig:
         "--languages",
         nargs="+",
         default=["python"],
-        help="Languages to benchmark. Supported: python cpp rust go",
+        help="Languages to benchmark. Supported: python cpp rust go java",
     )
     args = parser.parse_args(argv)
 
@@ -91,6 +91,14 @@ def get_go_binary_path(repo_root: Path) -> Path:
     return repo_root / "implementations" / "go" / binary_name
 
 
+def get_java_out_dir(repo_root: Path) -> Path:
+    return repo_root / "implementations" / "java" / "out"
+
+
+def get_java_main_class_path(repo_root: Path) -> Path:
+    return get_java_out_dir(repo_root) / "DiceLab.class"
+
+
 def ensure_language_ready(language: str, repo_root: Path) -> None:
     # We fail early with targeted guidance so benchmark runs do not partially succeed.
     if language == "python":
@@ -123,6 +131,15 @@ def ensure_language_ready(language: str, repo_root: Path) -> None:
             raise ValueError(
                 "Go binary not found. Build first from implementations/go with: "
                 "go build -o dice-lab ."
+            )
+        return
+
+    if language == "java":
+        java_main_class = get_java_main_class_path(repo_root)
+        if not java_main_class.exists():
+            raise ValueError(
+                "Java compiled class not found. Build first from implementations/java with: "
+                "mkdir -p out && javac -d out src/DiceLab.java"
             )
         return
 
@@ -171,6 +188,21 @@ def build_command(language: str, repo_root: Path, rolls: int, sides: int) -> tup
     if language == "go":
         command = [
             str(get_go_binary_path(repo_root)),
+            "--rolls",
+            str(rolls),
+            "--sides",
+            str(sides),
+            "--format",
+            "text",
+        ]
+        return command, repo_root
+
+    if language == "java":
+        command = [
+            "java",
+            "-cp",
+            str(get_java_out_dir(repo_root)),
+            "DiceLab",
             "--rolls",
             str(rolls),
             "--sides",

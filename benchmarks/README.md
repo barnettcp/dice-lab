@@ -13,8 +13,22 @@ From repo root:
 
 ```bash
 python benchmarks/benchmark_runner.py
-python benchmarks/benchmark_runner.py --languages python cpp rust
+python benchmarks/benchmark_runner.py --languages python cpp rust go java
 ```
+
+## Pre-Benchmark Build Requirements
+
+Build each compiled implementation first:
+
+- C++ (from `implementations/cpp`):
+	- `g++ -std=c++17 -O3 -o dice-lab src/main.cpp src/Dice.cpp`
+- Rust (from `implementations/rust`):
+	- `cargo build --release`
+- Go (from `implementations/go`):
+	- `go build -o dice-lab .`
+- Java (compile into `implementations/java/out` from repo root):
+	- `mkdir -p implementations/java/out`
+	- `javac -d implementations/java/out implementations/java/src/DiceLab.java`
 
 ## Commit Policy
 
