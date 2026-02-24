@@ -77,18 +77,42 @@ def get_python_cli_path(repo_root: Path) -> Path:
 
 
 def get_cpp_binary_path(repo_root: Path) -> Path:
-    binary_name = "dice-lab.exe" if os.name == "nt" else "dice-lab"
-    return repo_root / "implementations" / "cpp" / binary_name
+    # On Windows + Git Bash, binaries may appear as either dice-lab.exe or dice-lab.
+    # We accept both to avoid shell/toolchain-specific naming surprises.
+    base = repo_root / "implementations" / "cpp"
+    exe_path = base / "dice-lab.exe"
+    plain_path = base / "dice-lab"
+    if exe_path.exists():
+        return exe_path
+    if plain_path.exists():
+        return plain_path
+    return exe_path if os.name == "nt" else plain_path
 
 
 def get_rust_binary_path(repo_root: Path) -> Path:
-    binary_name = "dice-lab.exe" if os.name == "nt" else "dice-lab"
-    return repo_root / "implementations" / "rust" / "target" / "release" / binary_name
+    # Rust release artifact can also be seen with/without .exe depending on shell context.
+    # Checking both keeps benchmark discovery robust across environments.
+    base = repo_root / "implementations" / "rust" / "target" / "release"
+    exe_path = base / "dice-lab.exe"
+    plain_path = base / "dice-lab"
+    if exe_path.exists():
+        return exe_path
+    if plain_path.exists():
+        return plain_path
+    return exe_path if os.name == "nt" else plain_path
 
 
 def get_go_binary_path(repo_root: Path) -> Path:
-    binary_name = "dice-lab.exe" if os.name == "nt" else "dice-lab"
-    return repo_root / "implementations" / "go" / binary_name
+    # Go builds on Windows may still produce a no-extension file in Git Bash workflows.
+    # Prefer whichever artifact actually exists.
+    base = repo_root / "implementations" / "go"
+    exe_path = base / "dice-lab.exe"
+    plain_path = base / "dice-lab"
+    if exe_path.exists():
+        return exe_path
+    if plain_path.exists():
+        return plain_path
+    return exe_path if os.name == "nt" else plain_path
 
 
 def get_java_out_dir(repo_root: Path) -> Path:
@@ -102,12 +126,14 @@ def get_java_main_class_path(repo_root: Path) -> Path:
 def ensure_language_ready(language: str, repo_root: Path) -> None:
     # We fail early with targeted guidance so benchmark runs do not partially succeed.
     if language == "python":
+        # Python runs a script directly, so we only need the source entry file.
         python_entry = get_python_cli_path(repo_root)
         if not python_entry.exists():
             raise ValueError(f"Python entry script not found: {python_entry}")
         return
 
     if language == "cpp":
+        # C++ benchmarks run a prebuilt native binary.
         cpp_binary = get_cpp_binary_path(repo_root)
         if not cpp_binary.exists():
             raise ValueError(
@@ -117,6 +143,7 @@ def ensure_language_ready(language: str, repo_root: Path) -> None:
         return
 
     if language == "rust":
+        # Rust benchmarks run the prebuilt release binary for fair timing.
         rust_binary = get_rust_binary_path(repo_root)
         if not rust_binary.exists():
             raise ValueError(
@@ -126,6 +153,7 @@ def ensure_language_ready(language: str, repo_root: Path) -> None:
         return
 
     if language == "go":
+        # Go benchmarks run a prebuilt binary from implementations/go.
         go_binary = get_go_binary_path(repo_root)
         if not go_binary.exists():
             raise ValueError(
@@ -135,6 +163,7 @@ def ensure_language_ready(language: str, repo_root: Path) -> None:
         return
 
     if language == "java":
+        # Java benchmark executes JVM bytecode; we verify class compilation happened.
         java_main_class = get_java_main_class_path(repo_root)
         if not java_main_class.exists():
             raise ValueError(
@@ -149,6 +178,7 @@ def ensure_language_ready(language: str, repo_root: Path) -> None:
 def build_command(language: str, repo_root: Path, rolls: int, sides: int) -> tuple[list[str], Path]:
     # All benchmarks use --format text and no --parallel per benchmark spec.
     if language == "python":
+        # Python command: interpreter + script path + standardized benchmark args.
         command = [
             sys.executable,
             str(get_python_cli_path(repo_root)),
@@ -162,6 +192,7 @@ def build_command(language: str, repo_root: Path, rolls: int, sides: int) -> tup
         return command, repo_root
 
     if language == "cpp":
+        # C++ command: invoke compiled binary directly.
         command = [
             str(get_cpp_binary_path(repo_root)),
             "--rolls",
@@ -174,6 +205,7 @@ def build_command(language: str, repo_root: Path, rolls: int, sides: int) -> tup
         return command, repo_root
 
     if language == "rust":
+        # Rust command: invoke compiled release binary directly.
         command = [
             str(get_rust_binary_path(repo_root)),
             "--rolls",
@@ -186,6 +218,7 @@ def build_command(language: str, repo_root: Path, rolls: int, sides: int) -> tup
         return command, repo_root
 
     if language == "go":
+        # Go command: invoke compiled binary directly.
         command = [
             str(get_go_binary_path(repo_root)),
             "--rolls",
@@ -198,6 +231,7 @@ def build_command(language: str, repo_root: Path, rolls: int, sides: int) -> tup
         return command, repo_root
 
     if language == "java":
+        # Java command: run DiceLab class from compiled output directory via JVM classpath.
         command = [
             "java",
             "-cp",
