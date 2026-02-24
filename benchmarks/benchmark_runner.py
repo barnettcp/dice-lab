@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 # Benchmark workloads from spec/benchmark_spec.md.
-WORKLOADS = (100, 1_000, 10_000, 100_000)
+WORKLOADS = (100, 1_000, 10_000, 100_000, 1_000_000)
 DEFAULT_RUNS = 5
 SUPPORTED_LANGUAGES = ("python", "cpp", "rust", "go", "java")
 
