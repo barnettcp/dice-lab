@@ -17,6 +17,11 @@ target/
 Cargo.lock
 *.rs.bk
 
+# Java
+*.class
+out/
+implementations/java/out/
+
 # Python
 __pycache__/
 *.pyc
