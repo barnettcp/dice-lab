@@ -19,6 +19,7 @@ All implementations should align to the specs in [spec](spec):
 - [spec/cli_spec.md](spec/cli_spec.md)
 - [spec/output_spec.md](spec/output_spec.md)
 - [spec/benchmark_spec.md](spec/benchmark_spec.md)
+- [spec/analysis_spec.md](spec/analysis_spec.md)
 
 If there is ambiguity, specs take precedence over implementation details.
 
@@ -31,6 +32,7 @@ If there is ambiguity, specs take precedence over implementation details.
 - [implementations/java](implementations/java)
 - [benchmarks](benchmarks)
 - [shared-data](shared-data)
+- [analysis](analysis)
 
 Each implementation is expected to:
 
@@ -81,6 +83,7 @@ Examples:
 
 Optional controls:
 
+- `--batch-runs <int>` for full benchmark cycle repetitions (macro `run_id`)
 - `--runs <int>` for repetition count per workload
 - `--sides <int>` for side count (default benchmark baseline is 6)
 - `--output <path>` for report destination
@@ -97,6 +100,21 @@ Notes:
 	- `mkdir -p implementations/java/out`
 	- `javac -d implementations/java/out implementations/java/src/DiceLab.java`
 - Benchmark timing excludes compile time (compile separately).
+
+## Analysis Model (Pandas First)
+
+First-pass analysis is implemented in [analysis](analysis) and follows [spec/analysis_spec.md](spec/analysis_spec.md).
+
+Run from repo root:
+
+- `python analysis/run_analysis.py`
+
+Primary outputs:
+
+- `shared-data/analysis_run_table.csv`
+- `shared-data/analysis_batch_table.csv`
+- `shared-data/analysis_language_workload_summary.csv`
+- `reports/analysis_summary.md`
 
 ## Portfolio/Analysis Guidance
 
