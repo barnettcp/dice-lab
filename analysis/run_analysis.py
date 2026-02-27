@@ -2,7 +2,7 @@
 
 This script is the primary entry point for the pandas-first analysis phase
 described in ``spec/analysis_spec.md``.  It reads the benchmark JSON report,
-builds the canonical DataFrames via :mod:`pandas_analysis`, writes the three
+builds the canonical DataFrames via :mod:`build_tables`, writes the three
 normalised CSVs to ``shared-data/``, and renders a high-level markdown
 summary to ``reports/analysis_summary.md``.
 
@@ -19,7 +19,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from pandas_analysis import build_frames, load_report, summarize_language_workloads
+from build_tables import build_frames, load_report, summarize_language_workloads
 
 
 def parse_args() -> argparse.Namespace:

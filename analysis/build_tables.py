@@ -1,4 +1,4 @@
-"""Core pandas analysis library for DiceLab benchmark data.
+"""Core data transformation library for DiceLab benchmark data.
 
 This module provides functions to load, normalise, and summarise the JSON
 report produced by ``benchmarks/benchmark_runner.py``.  All public functions
