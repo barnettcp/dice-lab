@@ -12,7 +12,7 @@ Usage (from repo root)::
         --batch-runs 10
 
 All language binaries must be pre-built before running.  The script validates
-binary/script availability up front so a missing artefact fails loudly before
+binary/script availability up front so a missing artifact fails loudly before
 any timing begins.
 """
 
@@ -211,7 +211,7 @@ def get_java_out_dir(repo_root: Path) -> Path:
 
 
 def get_java_main_class_path(repo_root: Path) -> Path:
-    """Return the expected path to the compiled ``DiceLab.class`` artefact.
+    """Return the expected path to the compiled ``DiceLab.class`` artifact.
 
     Used by :func:`ensure_language_ready` to verify the Java implementation has
     been compiled before a benchmark run starts.
@@ -223,7 +223,7 @@ def get_java_main_class_path(repo_root: Path) -> Path:
 
 
 def ensure_language_ready(language: str, repo_root: Path) -> None:
-    """Verify that the required build artefact or script exists for *language*.
+    """Verify that the required build artifact or script exists for *language*.
 
     Raises a descriptive :class:`ValueError` with build instructions if the
     expected entry point is missing.  Called once per language before any

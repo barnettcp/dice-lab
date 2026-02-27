@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    """Run the full analysis pipeline and write all output artefacts.
+    """Run the full analysis pipeline and write all output artifacts.
 
     Reads the benchmark JSON report, normalises it into the three canonical
     DataFrames, exports them as CSVs under ``shared-data/``, and writes a
