@@ -18,6 +18,7 @@ This folder contains the first-pass analysis workflow for DiceLab benchmark data
 |---|---|
 | `build_tables.py` | Core transformation library — loads the benchmark JSON and normalises it into the three canonical DataFrames (`run_table`, `batch_table`, `metadata_table`). Importable from scripts, notebooks, and a future Streamlit dashboard. |
 | `run_analysis.py` | CLI driver — calls `build_tables`, exports CSVs to `shared-data/`, and writes the markdown summary to `reports/`. |
+| `analyze_tables.py` | Analysis and visualization library — loads the canonical CSVs and exposes Plotly chart functions for within-language scaling, trial distributions, cross-language comparisons, consistency (CV), and macro batch trends. Returns `plotly.graph_objects.Figure` objects compatible with both HTML export and Streamlit. |
 
 ## Outputs
 
