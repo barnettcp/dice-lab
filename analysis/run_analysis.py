@@ -1,3 +1,19 @@
+"""CLI driver that produces normalised CSV exports and a markdown summary report.
+
+This script is the primary entry point for the pandas-first analysis phase
+described in ``spec/analysis_spec.md``.  It reads the benchmark JSON report,
+builds the canonical DataFrames via :mod:`pandas_analysis`, writes the three
+normalised CSVs to ``shared-data/``, and renders a high-level markdown
+summary to ``reports/analysis_summary.md``.
+
+Usage (from repo root)::
+
+    python analysis/run_analysis.py \\
+        --input benchmarks/results/benchmark_report.json \\
+        --shared-output-dir shared-data \\
+        --report-output reports/analysis_summary.md
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -7,6 +23,15 @@ from pandas_analysis import build_frames, load_report, summarize_language_worklo
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for the analysis driver.
+
+    Returns:
+        :class:`argparse.Namespace` with attributes:
+
+        - ``input`` (:class:`str`) — path to the benchmark JSON report.
+        - ``shared_output_dir`` (:class:`str`) — directory for CSV exports.
+        - ``report_output`` (:class:`str`) — path for the markdown summary.
+    """
     parser = argparse.ArgumentParser(
         prog="run-analysis",
         description="Build pandas-first benchmark analysis tables and summary artifacts.",
@@ -30,6 +55,16 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    """Run the full analysis pipeline and write all output artefacts.
+
+    Reads the benchmark JSON report, normalises it into the three canonical
+    DataFrames, exports them as CSVs under ``shared-data/``, and writes a
+    markdown summary to ``reports/analysis_summary.md`` (or the paths
+    specified via CLI flags).
+
+    Returns:
+        ``0`` on success, ``1`` if the input report file is not found.
+    """
     args = parse_args()
 
     input_path = Path(args.input)
