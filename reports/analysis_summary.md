@@ -1,41 +1,41 @@
 # DiceLab Analysis Summary
 
 Source report: `benchmarks/results/benchmark_report.json`
-Run table rows: 1250
-Batch rows: 10
+Run table rows: 25000
+Batch rows: 100
 
 ## Metadata
 
-- Benchmark start: 2026-02-26T06:24:00.393536Z
-- Benchmark end: 2026-02-26T06:25:10.743147Z
+- Benchmark start: 2026-02-28T21:50:55.066357Z
+- Benchmark end: 2026-02-28T22:27:51.155657Z
 - Languages: python,cpp,rust,go,java
-- Runs per workload: 5
-- Batch runs: 10
+- Runs per workload: 10
+- Batch runs: 100
 
 ## Mean Timing by Language and Workload
 
-- cpp | rolls=100 | mean=14.651 ms | median=10.720 ms | std=9.590 ms
-- go | rolls=100 | mean=13.252 ms | median=11.112 ms | std=13.426 ms
-- java | rolls=100 | mean=113.429 ms | median=112.186 ms | std=12.644 ms
-- python | rolls=100 | mean=65.232 ms | median=64.198 ms | std=4.346 ms
-- rust | rolls=100 | mean=12.883 ms | median=10.975 ms | std=10.517 ms
-- cpp | rolls=1000 | mean=11.360 ms | median=9.566 ms | std=4.326 ms
-- go | rolls=1000 | mean=10.914 ms | median=9.868 ms | std=2.665 ms
-- java | rolls=1000 | mean=112.780 ms | median=113.427 ms | std=11.139 ms
-- python | rolls=1000 | mean=66.689 ms | median=66.237 ms | std=2.966 ms
-- rust | rolls=1000 | mean=11.698 ms | median=10.873 ms | std=3.479 ms
-- cpp | rolls=10000 | mean=10.883 ms | median=10.007 ms | std=2.303 ms
-- go | rolls=10000 | mean=10.736 ms | median=10.148 ms | std=2.043 ms
-- java | rolls=10000 | mean=111.678 ms | median=108.445 ms | std=10.659 ms
-- python | rolls=10000 | mean=69.666 ms | median=68.786 ms | std=4.402 ms
-- rust | rolls=10000 | mean=12.836 ms | median=11.425 ms | std=4.948 ms
-- cpp | rolls=100000 | mean=11.933 ms | median=10.628 ms | std=3.155 ms
-- go | rolls=100000 | mean=12.038 ms | median=10.609 ms | std=3.496 ms
-- java | rolls=100000 | mean=114.838 ms | median=113.353 ms | std=10.037 ms
-- python | rolls=100000 | mean=94.600 ms | median=94.615 ms | std=4.169 ms
-- rust | rolls=100000 | mean=12.487 ms | median=11.492 ms | std=3.365 ms
-- cpp | rolls=1000000 | mean=13.616 ms | median=13.110 ms | std=2.680 ms
-- go | rolls=1000000 | mean=15.369 ms | median=14.434 ms | std=2.704 ms
-- java | rolls=1000000 | mean=118.256 ms | median=118.062 ms | std=8.732 ms
-- python | rolls=1000000 | mean=348.824 ms | median=347.656 ms | std=12.444 ms
-- rust | rolls=1000000 | mean=15.465 ms | median=15.030 ms | std=2.987 ms
+- cpp | rolls=100 | mean=39.777 ms | median=39.109 ms | std=5.513 ms
+- go | rolls=100 | mean=41.586 ms | median=39.972 ms | std=8.177 ms
+- java | rolls=100 | mean=170.031 ms | median=169.395 ms | std=13.166 ms
+- python | rolls=100 | mean=91.036 ms | median=90.765 ms | std=5.317 ms
+- rust | rolls=100 | mean=39.550 ms | median=38.913 ms | std=5.529 ms
+- cpp | rolls=1000 | mean=38.559 ms | median=38.253 ms | std=4.646 ms
+- go | rolls=1000 | mean=40.080 ms | median=39.383 ms | std=6.565 ms
+- java | rolls=1000 | mean=165.799 ms | median=162.919 ms | std=12.657 ms
+- python | rolls=1000 | mean=92.263 ms | median=90.965 ms | std=11.650 ms
+- rust | rolls=1000 | mean=39.195 ms | median=38.604 ms | std=5.642 ms
+- cpp | rolls=10000 | mean=38.778 ms | median=38.214 ms | std=5.274 ms
+- go | rolls=10000 | mean=39.764 ms | median=38.951 ms | std=6.528 ms
+- java | rolls=10000 | mean=165.546 ms | median=162.899 ms | std=18.017 ms
+- python | rolls=10000 | mean=94.924 ms | median=93.848 ms | std=6.703 ms
+- rust | rolls=10000 | mean=39.030 ms | median=38.908 ms | std=4.491 ms
+- cpp | rolls=100000 | mean=39.206 ms | median=38.605 ms | std=5.810 ms
+- go | rolls=100000 | mean=39.734 ms | median=39.451 ms | std=4.688 ms
+- java | rolls=100000 | mean=169.167 ms | median=166.012 ms | std=12.595 ms
+- python | rolls=100000 | mean=121.125 ms | median=119.179 ms | std=7.917 ms
+- rust | rolls=100000 | mean=39.280 ms | median=38.558 ms | std=4.909 ms
+- cpp | rolls=1000000 | mean=43.455 ms | median=42.108 ms | std=7.476 ms
+- go | rolls=1000000 | mean=43.979 ms | median=43.471 ms | std=5.600 ms
+- java | rolls=1000000 | mean=172.236 ms | median=169.431 ms | std=12.099 ms
+- python | rolls=1000000 | mean=369.177 ms | median=366.856 ms | std=29.704 ms
+- rust | rolls=1000000 | mean=42.328 ms | median=41.908 ms | std=5.179 ms
