@@ -22,8 +22,12 @@ from pathlib import Path
 from build_tables import build_frames, load_report, summarize_language_workloads
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse CLI arguments for the analysis driver.
+
+    Args:
+        argv: Argument list to parse.  Defaults to ``sys.argv[1:]`` when
+            ``None``.
 
     Returns:
         :class:`argparse.Namespace` with attributes:
@@ -51,10 +55,10 @@ def parse_args() -> argparse.Namespace:
         default="reports/analysis_summary.md",
         help="Path for markdown summary report.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     """Run the full analysis pipeline and write all output artifacts.
 
     Reads the benchmark JSON report, normalises it into the three canonical
@@ -62,10 +66,14 @@ def main() -> int:
     markdown summary to ``reports/analysis_summary.md`` (or the paths
     specified via CLI flags).
 
+    Args:
+        argv: Argument list forwarded to :func:`parse_args`.  Defaults to
+            ``sys.argv[1:]`` when ``None``.
+
     Returns:
         ``0`` on success, ``1`` if the input report file is not found.
     """
-    args = parse_args()
+    args = parse_args(argv)
 
     input_path = Path(args.input)
     if not input_path.exists():

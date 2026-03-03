@@ -59,8 +59,7 @@ shared-data/*.tsv
 shared-data/*.json
 
 # Ignore report generated files
-reports/analysis_summary.md
-reports/benchmark_report.html
+reports/*
 
 # Ignore generated benchmark result files (commit curated snapshots intentionally)
 benchmarks/results/*.json
