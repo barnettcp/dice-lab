@@ -58,6 +58,9 @@ from analyze_tables import (  # noqa: E402 — must follow sys.path insertion
     plot_cross_language_at_workload,
     plot_cross_language_consistency,
     plot_cross_language_scaling,
+    plot_mean_time_by_workload,
+    plot_mean_vs_cv_all,
+    plot_ridgeline,
     plot_scaling_within_language,
     plot_trial_histogram_within_language,
 )
@@ -199,7 +202,8 @@ li { margin-bottom: 0.25rem; }
 
 /* ---- Chart panels (show/hide via JS) ---- */
 .chart-panel { display: none; }
-.chart-panel.active { display: block; }
+.chart-panel.active { display: block; opacity: 1; transition: opacity 0.15s ease; }
+.chart-panel.resizing { opacity: 0; transition: none; }
 
 /* ---- Stats table ---- */
 .stats-table {
@@ -264,7 +268,18 @@ function switchPanel(prefix, value) {
     });
     // Activate the selected panel.
     var target = document.getElementById(prefix + '-' + value);
-    if (target) { target.classList.add('active'); }
+    if (target) {
+        // Make the panel part of layout (display:block) but invisible
+        // so Plotly can measure container width without a visible flash.
+        target.classList.add('active', 'resizing');
+        target.querySelectorAll('.js-plotly-plot').forEach(function(plot) {
+            Plotly.Plots.resize(plot);
+        });
+        // Allow one frame for the resize to land, then fade in.
+        requestAnimationFrame(function() {
+            target.classList.remove('resizing');
+        });
+    }
 }
 """
 
@@ -454,8 +469,9 @@ the CLI wrapper permits.
 def _section_batch(batch_table) -> str:
     """Return the HTML for Section 2: Batch Timing.
 
-    Embeds the batch timing trend chart and provides brief interpretive text
-    explaining warm-up effects and what to look for.
+    Embeds the enhanced batch timing trend chart (with rolling-mean overlay
+    and ±1 std band) and provides brief interpretive text explaining warm-up
+    effects and what to look for.
 
     Args:
         batch_table: DataFrame from :func:`load_batch_table`.
@@ -502,26 +518,28 @@ all ten batches was <strong>{mean_ms/1000:.2f}&nbsp;s</strong>.
 """
 
 
-def _section_cross_language(workload_summary) -> str:
+def _section_cross_language(workload_summary, run_table) -> str:
     """Return the HTML for Section 3: Cross-Language Comparison.
 
-    Embeds three charts:
-    - A multi-line scaling chart for all languages together.
+    Embeds six charts:
+    - A multi-line scaling chart with ±1 std band for all languages.
     - A per-workload bar chart hidden behind a dropdown selector.
+    - A mean-vs-CV scatter plot.
+    - A ridgeline (joy) plot of elapsed time KDEs (dropdown per workload).
     - A coefficient-of-variation consistency chart.
 
     Args:
         workload_summary: DataFrame from :func:`load_workload_summary`.
+        run_table: Per-trial DataFrame from :func:`load_run_table`.
 
     Returns:
         HTML string for the cross-language section.
     """
-    # ---- Scaling chart (always visible) ----
-    scaling_fig  = plot_cross_language_scaling(workload_summary)
+    # ---- Scaling chart with ±1 std band (always visible) ----
+    scaling_fig  = plot_mean_time_by_workload(workload_summary)
     scaling_html = _fig_to_div(scaling_fig)
 
     # ---- Per-workload bar charts (dropdown-controlled) ----
-    # Build one panel per workload; the first panel starts active.
     xwl_dropdown = _dropdown(
         label="Select workload:",
         select_id="xwl-select",
@@ -534,6 +552,24 @@ def _section_cross_language(workload_summary) -> str:
         bar_html = _fig_to_div(bar_fig)
         xwl_panels.append(_panel(bar_html, f"xwl-{rolls}", active=(i == 0)))
     xwl_panels_html = "\n".join(xwl_panels)
+
+    # ---- Mean vs CV scatter (always visible) ----
+    cv_scatter_fig  = plot_mean_vs_cv_all(workload_summary)
+    cv_scatter_html = _fig_to_div(cv_scatter_fig)
+
+    # ---- Ridgeline plot (dropdown-controlled by workload) ----
+    ridge_dropdown = _dropdown(
+        label="Select workload:",
+        select_id="ridge-select",
+        prefix="ridge",
+        options=[(str(r), f"{WORKLOAD_LABELS[r]} rolls") for r in WORKLOADS],
+    )
+    ridge_panels = []
+    for i, rolls in enumerate(WORKLOADS):
+        ridge_fig  = plot_ridgeline(run_table, num_rolls=rolls)
+        ridge_html = _fig_to_div(ridge_fig)
+        ridge_panels.append(_panel(ridge_html, f"ridge-{rolls}", active=(i == 0)))
+    ridge_panels_html = "\n".join(ridge_panels)
 
     # ---- CV consistency chart (always visible) ----
     cv_fig  = plot_cross_language_consistency(workload_summary)
@@ -549,17 +585,18 @@ def _section_cross_language(workload_summary) -> str:
 <p>
 This section compares all five languages directly.  We start with the
 broadest view — how mean execution time evolves across the full workload
-range — before zooming into individual workload snapshots and finishing
-with a dimensionless consistency metric.
+range — before zooming into individual workload snapshots, distribution
+shapes, and finishing with dimensionless consistency metrics.
 </p>
 
 <h3>Scaling Trend</h3>
 <p>
-The chart below places all five languages on the same log-scaled x-axis.
+The chart below places all five languages on the same log-scaled x-axis,
+with a shaded ±1 standard deviation band around each line.  A narrower
+band indicates more consistent timing across repeated trials.
 Lines running <em>parallel</em> imply each language shares the same scaling
-exponent (the workload grows proportionally for all).  A line that diverges
-upward signals worse asymptotic behaviour at large inputs — most visible
-for Python at the 1&nbsp;M-roll level.
+exponent.  A line that diverges upward signals worse asymptotic behaviour
+at large inputs — most visible for Python at the 1&nbsp;M-roll level.
 </p>
 
 {scaling_html}
@@ -567,21 +604,41 @@ for Python at the 1&nbsp;M-roll level.
 <h3>Per-Workload Snapshot</h3>
 <p>
 Use the dropdown to inspect magnitude comparisons at a single fixed
-workload.  Error bars show ±1 standard deviation across the 50 trials.
-This view is particularly effective for seeing how dominant Java's JVM
-startup overhead is at small workloads, and whether that gap closes at
-larger ones.
+workload.  Bars are sorted by mean execution time in ascending order.
+Error bars show ±1 standard deviation across all trials.
 </p>
 
 {xwl_dropdown}
 {xwl_panels_html}
+
+<h3>Mean Time vs Coefficient of Variation</h3>
+<p>
+The scatter plot below maps each (language, workload) combination onto
+two axes: mean execution time on the x-axis and coefficient of variation
+(CV = std / mean) on the y-axis.  Marker size encodes workload level.
+Points in the <em>bottom-left</em> corner are both fast and consistent —
+the ideal outcome.
+</p>
+
+{cv_scatter_html}
+
+<h3>Trial Time Distribution (Ridgeline)</h3>
+<p>
+The ridgeline plot stacks KDE curves for each language vertically so
+distribution shapes can be compared at a glance.  Use the dropdown to
+switch between workload levels.  A narrow, symmetric ridge indicates
+stable timing; a wide or skewed ridge suggests variability.
+</p>
+
+{ridge_dropdown}
+{ridge_panels_html}
 
 <h3>Timing Consistency (Coefficient of Variation)</h3>
 <p>
 Raw standard deviation cannot be fairly compared between a language timing
 at ~12&nbsp;ms (Rust) and one at ~65&nbsp;ms (Python) — the absolute
 spread naturally differs.  The <strong>coefficient of variation</strong>
-(CV&nbsp;=&nbsp;std&nbsp;/&nbsp;mean&nbsp;×&nbsp;100&nbsp;%) normalises
+(CV&nbsp;=&nbsp;std&nbsp;/&nbsp;mean&nbsp;&times;&nbsp;100&nbsp;%) normalises
 spread relative to the mean, making consistency directly comparable across
 all languages.
 </p>
@@ -748,7 +805,7 @@ def build_report(
     print("[build_report] Building sections …")
     s1 = _section_intro()
     s2 = _section_batch(batch_table)
-    s3 = _section_cross_language(workload_summary)
+    s3 = _section_cross_language(workload_summary, run_table)
     s4 = _section_per_language(run_table, workload_summary)
 
     # ---- Assemble the full HTML document ----

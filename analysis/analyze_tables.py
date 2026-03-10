@@ -39,9 +39,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from scipy.stats import gaussian_kde
 
 
 # ---------------------------------------------------------------------------
@@ -65,6 +67,15 @@ LANGUAGE_COLORS: dict[str, str] = {
 
 # Human-readable axis tick labels for the five benchmark workload sizes.
 # Used wherever roll counts appear on a chart axis.
+# Human-readable display names for each language.
+LANGUAGE_DISPLAY: dict[str, str] = {
+    "cpp":    "C++",
+    "go":     "Go",
+    "java":   "Java",
+    "python": "Python",
+    "rust":   "Rust",
+}
+
 WORKLOAD_LABELS: dict[int, str] = {
     100: "100",
     1_000: "1 K",
@@ -72,6 +83,19 @@ WORKLOAD_LABELS: dict[int, str] = {
     100_000: "100 K",
     1_000_000: "1 M",
 }
+
+# Discrete marker sizes per workload for bubble-style scatter plots.
+WORKLOAD_SIZES: dict[int, int] = {
+    100:       6,
+    1_000:     9,
+    10_000:    13,
+    100_000:   18,
+    1_000_000: 24,
+}
+
+# Canonical ordered lists for iteration.
+LANGUAGES: list[str] = ["cpp", "go", "java", "python", "rust"]
+WORKLOADS: list[int] = [100, 1_000, 10_000, 100_000, 1_000_000]
 
 
 # ---------------------------------------------------------------------------
@@ -394,10 +418,10 @@ def plot_cross_language_at_workload(
     Returns:
         Plotly bar chart figure.
     """
-    subset = workload_summary[workload_summary["rolls"] == rolls].sort_values("language")
+    subset = workload_summary[workload_summary["rolls"] == rolls].sort_values("mean_ms")
     label = WORKLOAD_LABELS.get(rolls, str(rolls))
 
-    # Build a color list aligned with the sorted language order.
+    # Build a color list aligned with the sorted order.
     colors = [LANGUAGE_COLORS.get(lang, "#888888") for lang in subset["language"]]
 
     fig = go.Figure(
@@ -491,7 +515,11 @@ def plot_cross_language_consistency(workload_summary: pd.DataFrame) -> go.Figure
 # Macro / batch plots
 # ---------------------------------------------------------------------------
 
-def plot_batch_timing_trend(batch_table: pd.DataFrame) -> go.Figure:
+def plot_batch_timing_trend(
+    batch_table: pd.DataFrame,
+    gridline_alpha: float = 0.15,
+    window: int = 10,
+) -> go.Figure:
     """Line chart of total batch elapsed time across sequential batch runs.
 
     Each point is one full benchmark pass (all languages × all workloads ×
@@ -500,39 +528,681 @@ def plot_batch_timing_trend(batch_table: pd.DataFrame) -> go.Figure:
     high variance later can indicate sustained system load or thermal
     throttling during the session.
 
+    A rolling mean (MA) overlay and ±1 standard deviation band are drawn to
+    separate trend from noise.  The first ``window - 1`` points of the rolling
+    calculations are ``NaN`` and are simply omitted from those traces.
+
     Args:
         batch_table: Per-batch DataFrame from :func:`load_batch_table`.
+        gridline_alpha: Opacity of the vertical reference lines drawn at every
+            10th batch run (0.0 = invisible, 1.0 = fully opaque).
+        window: Rolling window size for the mean and std deviation overlay.
+            Use 5 for a more reactive line, 10 for a smoother trend.
 
     Returns:
         Plotly line chart with batch ``run_id`` on the x-axis and total
         elapsed time in ms on the y-axis.
     """
-    df = batch_table.sort_values("run_id")
+    df = batch_table.sort_values("run_id").copy()
 
-    fig = go.Figure(
-        go.Scatter(
-            x=df["run_id"],
-            y=df["elapsed_ms"],
-            mode="lines+markers",
-            line=dict(color="#5C6BC0", width=2),
-            marker=dict(size=8),
-            hovertemplate=(
-                "Batch %{x}<br>"
-                "Elapsed: %{y:.1f} ms<extra></extra>"
-            ),
-        )
-    )
+    # Compute rolling statistics (min_periods=window to avoid partial windows)
+    df["roll_mean"] = df["elapsed_ms"].rolling(window, min_periods=window).mean()
+    df["roll_std"]  = df["elapsed_ms"].rolling(window, min_periods=window).std()
+    df["band_upper"] = df["roll_mean"] + df["roll_std"]
+    df["band_lower"] = df["roll_mean"] - df["roll_std"]
+
+    fig = go.Figure()
+
+    # ── ±1 std deviation band ───────────────────────────────────────────────
+    fig.add_trace(go.Scatter(
+        x=df["run_id"], y=df["band_upper"],
+        mode="lines",
+        line=dict(width=0),
+        showlegend=False,
+        hoverinfo="skip",
+    ))
+    fig.add_trace(go.Scatter(
+        x=df["run_id"], y=df["band_lower"],
+        mode="lines",
+        line=dict(width=0),
+        fill="tonexty",
+        fillcolor="rgba(255, 165, 0, 0.15)",
+        name=f"±1 std (MA{window})",
+        showlegend=True,
+        hoverinfo="skip",
+    ))
+
+    # ── Raw data ────────────────────────────────────────────────────────────
+    fig.add_trace(go.Scatter(
+        x=df["run_id"],
+        y=df["elapsed_ms"],
+        mode="lines+markers",
+        line=dict(color="#5C6BC0", width=1.5),
+        marker=dict(size=6),
+        name="Batch elapsed (ms)",
+        hovertemplate=(
+            "Batch %{x}<br>"
+            "Elapsed: %{y:.1f} ms<extra></extra>"
+        ),
+    ))
+
+    # ── Rolling mean overlay ─────────────────────────────────────────────────
+    fig.add_trace(go.Scatter(
+        x=df["run_id"],
+        y=df["roll_mean"],
+        mode="lines",
+        line=dict(color="rgba(230, 100, 0, 0.85)", width=2.5, dash="solid"),
+        name=f"MA({window})",
+        hovertemplate=(
+            f"MA({window}) at batch %{{x}}<br>"
+            "Mean: %{y:.1f} ms<extra></extra>"
+        ),
+    ))
 
     fig.update_layout(
-        title="Batch Timing Trend Across Benchmark Runs",
+        title=(
+            f"Batch Timing Trend Across Benchmark Runs (MA{window} overlay)"
+            "<br>Each point is one full batch of experiments "
+            "(all languages × workloads × trials)"
+        ),
         xaxis=dict(
             title="Batch run index",
-            # Integer batch IDs; step by 1 so every batch is labelled.
             tickmode="linear",
-            dtick=1,
+            dtick=10,
+            gridcolor=f"rgba(0,0,0,{gridline_alpha})",
         ),
         yaxis=dict(title="Total batch elapsed time (ms)"),
         template="plotly_white",
-        showlegend=False,
+        legend=dict(
+            orientation="h", yanchor="top", y=-0.2, xanchor="center", x=0.5,
+        ),
+    )
+    return fig
+
+
+# ---------------------------------------------------------------------------
+# Utility helpers
+# ---------------------------------------------------------------------------
+
+def hex_to_rgba(hex_color: str, alpha: float = 0.55) -> str:
+    """Convert a hex colour string to an ``rgba()`` CSS value.
+
+    Args:
+        hex_color: A CSS hex colour such as ``"#3572A5"`` or ``"#DEA584"``.
+        alpha: Opacity component (0.0 = fully transparent, 1.0 = fully opaque).
+
+    Returns:
+        An ``rgba(r, g, b, a)`` string suitable for Plotly ``fillcolor`` and
+        similar properties.
+    """
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
+def _filter_iqr(df: pd.DataFrame) -> pd.DataFrame:
+    """Return *df* with rows outside 1.5×IQR fences removed per language × workload.
+
+    Used by :func:`plot_boxwhisker_by_workload` to clip whiskers to the
+    standard 1.5×IQR range without rendering individual outlier points.
+
+    Args:
+        df: A subset of the run table containing at least ``language``,
+            ``rolls``, and ``elapsed_ms`` columns.
+
+    Returns:
+        Filtered DataFrame containing only rows within the IQR fences.
+    """
+    kept = []
+    for _, group in df.groupby(["language", "rolls"]):
+        q1 = group["elapsed_ms"].quantile(0.25)
+        q3 = group["elapsed_ms"].quantile(0.75)
+        iqr = q3 - q1
+        mask = group["elapsed_ms"].between(q1 - 1.5 * iqr, q3 + 1.5 * iqr)
+        kept.append(group[mask])
+    return pd.concat(kept)
+
+
+# ---------------------------------------------------------------------------
+# Cross-language scatter / distribution plots
+# ---------------------------------------------------------------------------
+
+def plot_mean_vs_cv_all(
+    workload_summary: pd.DataFrame,
+    size_legend: bool = False,
+) -> go.Figure:
+    """Scatter plot of mean execution time vs coefficient of variation.
+
+    Each point represents one (language, workload) combination.  Marker colour
+    encodes language and marker size encodes workload level, giving a
+    two-dimensional overview of both absolute performance and relative
+    consistency in a single chart.
+
+    The language legend is fully interactive (click to toggle).  The optional
+    workload-size legend is a visual reference only — clicking it hides the
+    legend entry but does not filter chart data, because Plotly does not
+    support two independent clickable legend dimensions on one chart.
+
+    Args:
+        workload_summary: Aggregated summary DataFrame from
+            :func:`load_workload_summary`.  Must contain ``mean_ms`` and
+            ``std_ms`` columns; CV is computed internally.
+        size_legend: If ``True``, append grey dummy markers showing the
+            workload-size scale in the legend.
+
+    Returns:
+        Plotly figure with language-coloured, workload-sized markers.
+    """
+    df = workload_summary.copy()
+    df["cv"] = df["std_ms"] / df["mean_ms"].replace(0, float("nan"))
+
+    fig = go.Figure()
+
+    for i, lang in enumerate(LANGUAGES):
+        sub = df[df["language"] == lang].copy()
+        if sub.empty:
+            continue
+
+        sub["marker_size"] = sub["rolls"].map(WORKLOAD_SIZES)
+        sub["workload_label"] = sub["rolls"].map(WORKLOAD_LABELS)
+
+        fig.add_trace(go.Scatter(
+            x=sub["mean_ms"],
+            y=sub["cv"],
+            mode="markers",
+            name=LANGUAGE_DISPLAY.get(lang, lang),
+            legendgroup=f"lang_{lang}",
+            legendgrouptitle_text="Language" if i == 0 else None,
+            showlegend=True,
+            marker=dict(
+                color=LANGUAGE_COLORS[lang],
+                size=sub["marker_size"],
+                line=dict(width=0.5, color="white"),
+            ),
+            customdata=sub["workload_label"],
+            hovertemplate=(
+                f"<b>{LANGUAGE_DISPLAY.get(lang, lang)}</b><br>"
+                "Workload: %{customdata}<br>"
+                "Mean: %{x:.5f} ms<br>"
+                "CV: %{y:.4f}"
+                "<extra></extra>"
+            ),
+        ))
+
+    if size_legend:
+        for i, workload in enumerate(WORKLOADS):
+            fig.add_trace(go.Scatter(
+                x=[None], y=[None],
+                mode="markers",
+                name=WORKLOAD_LABELS[workload],
+                legendgrouptitle_text="Workload (Rolls)" if i == 0 else None,
+                legendgroup="workload_size_legend",
+                showlegend=True,
+                marker=dict(
+                    color="gray",
+                    size=WORKLOAD_SIZES[workload],
+                ),
+            ))
+
+    fig.update_layout(
+        title="Mean Roll Time vs Coefficient of Variance by Language and Workload",
+        xaxis_title="Mean Roll Time (ms)",
+        yaxis_title="Coefficient of Variance",
+        legend=dict(groupclick="toggleitem"),
+        template="plotly_white",
+    )
+    return fig
+
+
+def plot_histogram_and_kde(
+    run_table: pd.DataFrame,
+    num_rolls: int = 100_000,
+    show_bars: bool = True,
+) -> go.Figure:
+    """Overlaid histograms and KDE curves of elapsed time for all languages.
+
+    Useful for comparing the *shape* of each language's timing distribution
+    at a single workload level — whether distributions are tight or spread,
+    symmetric or skewed, and how much they overlap.
+
+    Args:
+        run_table: Per-trial DataFrame from :func:`load_run_table`.
+        num_rolls: Workload level to isolate (e.g. ``100_000``).
+        show_bars: If ``True``, render semi-transparent histogram bars behind
+            the KDE lines.  Set to ``False`` for a cleaner KDE-only view.
+
+    Returns:
+        Plotly figure with one histogram and/or KDE trace per language.
+    """
+    work_df = run_table[run_table["rolls"] == num_rolls]
+    fig = go.Figure()
+
+    for lang in LANGUAGES:
+        lang_df = work_df[work_df["language"] == lang]
+        data = lang_df["elapsed_ms"]
+        color = LANGUAGE_COLORS.get(lang, None)
+
+        if show_bars:
+            fig.add_trace(go.Histogram(
+                x=data,
+                name=LANGUAGE_DISPLAY.get(lang, lang),
+                marker_color=color,
+                opacity=0.5,
+                nbinsx=30,
+                histnorm="probability density",
+                showlegend=True,
+            ))
+
+        if len(data) > 1:
+            kde = gaussian_kde(data)
+            x_grid = np.linspace(data.min(), data.max(), 200)
+            fig.add_trace(go.Scatter(
+                x=x_grid,
+                y=kde(x_grid),
+                mode="lines",
+                name=f"{LANGUAGE_DISPLAY.get(lang, lang)} KDE",
+                line=dict(color=color, width=2, dash="solid"),
+                fill="tozeroy",
+                showlegend=True,
+            ))
+
+    fig.update_layout(
+        title=f"Elapsed Time Distribution by Language<br>(Workload: {num_rolls:,} rolls)",
+        xaxis_title="Elapsed Time (ms)",
+        yaxis_title="Density",
+        barmode="overlay",
+        legend_title="Language",
+        template="plotly_white",
+    )
+    return fig
+
+
+def plot_ridgeline(
+    run_table: pd.DataFrame,
+    num_rolls: int = 100_000,
+    overlap: float = 0.75,
+    baseline_alpha: float = 0.25,
+) -> go.Figure:
+    """Ridgeline (joy) plot of elapsed time KDE distributions per language.
+
+    Each language sits on its own horizontal baseline.  Peaks taller than the
+    row spacing visually overflow into the band above, producing a layered
+    3-D feel that makes it easy to compare distribution shapes at a glance.
+
+    Args:
+        run_table: Per-trial DataFrame from :func:`load_run_table`.
+        num_rolls: Workload level to isolate (e.g. ``100_000``).
+        overlap: Controls how much peaks bleed into the row above.
+            ``0`` = fully separated rows, ``1`` = baselines at the same
+            level (total overlap).  Values around 0.5–0.75 work well.
+        baseline_alpha: Opacity of the per-language baseline reference
+            lines (0.0–1.0).
+
+    Returns:
+        Plotly figure with one KDE ridge per language, stacked vertically.
+    """
+    work_df = run_table[run_table["rolls"] == num_rolls]
+
+    kdes: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+    for lang in LANGUAGES:
+        data = work_df[work_df["language"] == lang]["elapsed_ms"].dropna()
+        if len(data) < 2:
+            continue
+        kde = gaussian_kde(data)
+        x_grid = np.linspace(data.min(), data.max(), 400)
+        kdes[lang] = (x_grid, kde(x_grid))
+
+    if not kdes:
+        fig = go.Figure()
+        fig.update_layout(title="No data to plot.")
+        return fig
+
+    max_kde_height = max(y.max() for _, y in kdes.values())
+    spacing = max_kde_height * (1.0 - overlap)
+
+    all_x = np.concatenate([x for x, _ in kdes.values()])
+    x_min, x_max = all_x.min(), all_x.max()
+
+    fig = go.Figure()
+
+    for lang in reversed(LANGUAGES):
+        if lang not in kdes:
+            continue
+        idx = LANGUAGES.index(lang)
+        baseline = idx * spacing
+        x_grid, y_kde = kdes[lang]
+        color = LANGUAGE_COLORS.get(lang, "#888888")
+
+        fig.add_trace(go.Scatter(
+            x=[x_min, x_max],
+            y=[baseline, baseline],
+            mode="lines",
+            line=dict(color=hex_to_rgba(color, alpha=baseline_alpha), width=1),
+            showlegend=False,
+            hoverinfo="skip",
+        ))
+
+        x_poly = np.concatenate([[x_grid[0]], x_grid, [x_grid[-1]]])
+        y_base = np.full(len(x_poly), baseline)
+        y_top  = np.concatenate([[baseline], y_kde + baseline, [baseline]])
+
+        fig.add_trace(go.Scatter(
+            x=x_poly, y=y_base,
+            mode="lines",
+            line=dict(color="rgba(0,0,0,0)", width=0),
+            showlegend=False,
+            hoverinfo="skip",
+        ))
+        fig.add_trace(go.Scatter(
+            x=x_poly, y=y_top,
+            mode="lines",
+            fill="tonexty",
+            fillcolor=hex_to_rgba(color, alpha=0.55),
+            line=dict(color=color, width=2),
+            name=LANGUAGE_DISPLAY.get(lang, lang),
+            showlegend=True,
+            hovertemplate=(
+                f"<b>{LANGUAGE_DISPLAY.get(lang, lang)}</b><br>"
+                "Time: %{x:.4f} ms"
+                "<extra></extra>"
+            ),
+        ))
+
+    active_langs = [l for l in LANGUAGES if l in kdes]
+    fig.update_layout(
+        title=f"Elapsed Time Ridgeline by Language<br>(Workload: {num_rolls:,} rolls)",
+        xaxis_title="Elapsed Time (ms)",
+        yaxis=dict(
+            tickvals=[LANGUAGES.index(l) * spacing for l in active_langs],
+            ticktext=[LANGUAGE_DISPLAY.get(l, l) for l in active_langs],
+            showgrid=False,
+            zeroline=False,
+        ),
+        legend_title="Language",
+        template="plotly_white",
+        hovermode="x unified",
+    )
+    return fig
+
+
+def plot_mean_time_by_workload(workload_summary: pd.DataFrame) -> go.Figure:
+    """Multi-line chart of mean elapsed time vs workload with ±1 std band.
+
+    Each language is drawn as a line with markers, accompanied by a
+    semi-transparent shaded band showing ±1 standard deviation.  A narrower
+    band indicates more consistent timing across trials.
+
+    The x-axis is log-scaled because workloads span four orders of magnitude
+    (100 → 1 M), which would compress small workloads on a linear scale.
+
+    Args:
+        workload_summary: Aggregated summary DataFrame from
+            :func:`load_workload_summary`.  Must contain ``mean_ms``,
+            ``std_ms``, and ``rolls`` columns.  A ``cv`` column is used in
+            hover if present; otherwise it is computed on the fly.
+
+    Returns:
+        Plotly figure with one line + band per language.
+    """
+    df = workload_summary.copy()
+    if "cv" not in df.columns:
+        df["cv"] = df["std_ms"] / df["mean_ms"].replace(0, float("nan"))
+
+    fig = go.Figure()
+
+    for lang in LANGUAGES:
+        sub = df[df["language"] == lang].sort_values("rolls")
+        if sub.empty:
+            continue
+
+        color = LANGUAGE_COLORS[lang]
+        display = LANGUAGE_DISPLAY.get(lang, lang)
+
+        upper = sub["mean_ms"] + sub["std_ms"]
+        lower = sub["mean_ms"] - sub["std_ms"]
+
+        fig.add_trace(go.Scatter(
+            x=sub["rolls"], y=upper,
+            mode="lines",
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip",
+            legendgroup=lang,
+        ))
+        fig.add_trace(go.Scatter(
+            x=sub["rolls"], y=lower,
+            mode="lines",
+            line=dict(width=0),
+            fill="tonexty",
+            fillcolor=hex_to_rgba(color, alpha=0.15),
+            showlegend=False,
+            hoverinfo="skip",
+            legendgroup=lang,
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=sub["rolls"],
+            y=sub["mean_ms"],
+            mode="lines+markers",
+            name=display,
+            legendgroup=lang,
+            line=dict(color=color, width=2),
+            marker=dict(size=7),
+            customdata=sub[["std_ms", "cv"]].values,
+            hovertemplate=(
+                f"<b>{display}</b><br>"
+                "Rolls: %{x:,}<br>"
+                "Mean: %{y:.4f} ms<br>"
+                "Std: %{customdata[0]:.4f} ms<br>"
+                "CV: %{customdata[1]:.4f}"
+                "<extra></extra>"
+            ),
+        ))
+
+    fig.update_layout(
+        title=(
+            "Mean Roll Time by Workload Size per Language"
+            "<br><sup>Shaded band = ±1 std deviation (consistency); "
+            "narrower band = more consistent</sup>"
+        ),
+        xaxis=dict(
+            title="Workload (rolls per trial)",
+            type="log",
+            tickvals=WORKLOADS,
+            ticktext=[WORKLOAD_LABELS[w] for w in WORKLOADS],
+        ),
+        yaxis=dict(title="Mean elapsed time (ms)"),
+        template="plotly_white",
+        legend_title="Language",
+    )
+    return fig
+
+
+def plot_normalized_scaling(
+    workload_summary: pd.DataFrame,
+    baseline_rolls: int = 10_000,
+) -> go.Figure:
+    """Normalised scaling chart relative to each language's own baseline.
+
+    Every language reads ``1.0`` at *baseline_rolls*, so the chart shows
+    *how fast or slow each language scales* rather than absolute speed.  A
+    line rising steeply to the right means that language scales poorly with
+    load.  A flat line means near-linear scaling.
+
+    Args:
+        workload_summary: Aggregated summary DataFrame from
+            :func:`load_workload_summary`.
+        baseline_rolls: The workload level used as the normalisation
+            reference (default ``10_000``).
+
+    Returns:
+        Plotly figure with one normalised line + band per language and a
+        dashed reference line at ``y = 1``.
+    """
+    fig = go.Figure()
+
+    for lang in LANGUAGES:
+        sub = workload_summary[workload_summary["language"] == lang].sort_values("rolls").copy()
+        if sub.empty:
+            continue
+
+        baseline_row = sub[sub["rolls"] == baseline_rolls]
+        if baseline_row.empty:
+            continue
+
+        baseline_mean = baseline_row["mean_ms"].values[0]
+
+        sub["norm_mean"]  = sub["mean_ms"] / baseline_mean
+        sub["norm_std"]   = sub["std_ms"] / baseline_mean
+        sub["norm_upper"] = sub["norm_mean"] + sub["norm_std"]
+        sub["norm_lower"] = sub["norm_mean"] - sub["norm_std"]
+
+        color   = LANGUAGE_COLORS[lang]
+        display = LANGUAGE_DISPLAY.get(lang, lang)
+
+        fig.add_trace(go.Scatter(
+            x=sub["rolls"], y=sub["norm_upper"],
+            mode="lines", line=dict(width=0),
+            showlegend=False, hoverinfo="skip",
+            legendgroup=lang,
+        ))
+        fig.add_trace(go.Scatter(
+            x=sub["rolls"], y=sub["norm_lower"],
+            mode="lines", line=dict(width=0),
+            fill="tonexty",
+            fillcolor=hex_to_rgba(color, alpha=0.15),
+            showlegend=False, hoverinfo="skip",
+            legendgroup=lang,
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=sub["rolls"],
+            y=sub["norm_mean"],
+            mode="lines+markers",
+            name=display,
+            legendgroup=lang,
+            line=dict(color=color, width=2),
+            marker=dict(size=7),
+            customdata=sub[["mean_ms", "norm_std"]].values,
+            hovertemplate=(
+                f"<b>{display}</b><br>"
+                "Rolls: %{x:,}<br>"
+                "Scaled mean: %{y:.3f}×<br>"
+                "Actual mean: %{customdata[0]:.4f} ms"
+                "<extra></extra>"
+            ),
+        ))
+
+    fig.add_hline(
+        y=1.0,
+        line=dict(color="rgba(0,0,0,0.25)", width=1, dash="dot"),
+        annotation_text=f"Baseline ({WORKLOAD_LABELS[baseline_rolls]} rolls = 1×)",
+        annotation_position="bottom right",
+    )
+
+    fig.update_layout(
+        title=(
+            f"Scaling Relative to {WORKLOAD_LABELS[baseline_rolls]}-Roll Baseline"
+            "<br><sup>1.0 = each language's own time at the baseline workload; "
+            "steeper slope = worse scaling</sup>"
+        ),
+        xaxis=dict(
+            title="Workload (rolls per trial)",
+            type="log",
+            tickvals=WORKLOADS,
+            ticktext=[WORKLOAD_LABELS[w] for w in WORKLOADS],
+        ),
+        yaxis=dict(
+            title=f"Mean time relative to {WORKLOAD_LABELS[baseline_rolls]}-roll baseline (×)",
+        ),
+        template="plotly_white",
+        legend_title="Language",
+    )
+    return fig
+
+
+def plot_boxwhisker_by_workload(
+    run_table: pd.DataFrame,
+    language: str | None = None,
+) -> go.Figure:
+    """Box-and-whisker plot of elapsed time by workload and language.
+
+    Uses all individual trial observations from the run table to compute full
+    distributions.  Workloads appear on the x-axis; each language gets its own
+    coloured box within each workload group for a side-by-side comparison of
+    both absolute performance and spread.
+
+    Outliers beyond 1.5×IQR are pre-filtered so that whiskers represent the
+    standard IQR fences without extreme values distorting the axis.
+
+    Args:
+        run_table: Per-trial DataFrame from :func:`load_run_table`.
+        language: If provided, restrict the chart to a single language
+            (e.g. ``"python"``).  When ``None``, all languages are shown
+            side-by-side.
+
+    Returns:
+        Plotly figure with grouped box traces.
+
+    Raises:
+        ValueError: If *language* is not in :data:`LANGUAGES`.
+    """
+    if language is not None and language not in LANGUAGES:
+        raise ValueError(f"Unknown language '{language}'. Choose from: {LANGUAGES}")
+
+    langs_to_plot = [language] if language is not None else LANGUAGES
+    df_filtered = _filter_iqr(run_table[run_table["language"].isin(langs_to_plot)])
+
+    fig = go.Figure()
+
+    for lang in langs_to_plot:
+        sub = df_filtered[df_filtered["language"] == lang]
+        if sub.empty:
+            continue
+
+        color   = LANGUAGE_COLORS[lang]
+        display = LANGUAGE_DISPLAY.get(lang, lang)
+        x_labels = sub["rolls"].map(WORKLOAD_LABELS)
+
+        fig.add_trace(go.Box(
+            x=x_labels,
+            y=sub["elapsed_ms"],
+            name=display,
+            marker_color=color,
+            line_color=color,
+            fillcolor=hex_to_rgba(color, alpha=0.4),
+            boxmean="sd",
+            boxpoints=False,
+            legendgroup=lang,
+            hovertemplate=(
+                f"<b>{display}</b><br>"
+                "Workload: %{x}<br>"
+                "Elapsed: %{y:.4f} ms"
+                "<extra></extra>"
+            ),
+        ))
+
+    ordered_labels = [WORKLOAD_LABELS[w] for w in WORKLOADS]
+
+    if language is not None:
+        title_main = f"Elapsed Time Distribution — {LANGUAGE_DISPLAY.get(language, language)}"
+    else:
+        title_main = "Elapsed Time Distribution by Language and Workload"
+
+    fig.update_layout(
+        title=(
+            title_main
+            + "<br><sup>Box = IQR · whiskers = 1.5×IQR · diamond = "
+            "mean ± 1 std · outliers excluded</sup>"
+        ),
+        xaxis=dict(
+            title="Workload (rolls per trial)",
+            categoryorder="array",
+            categoryarray=ordered_labels,
+        ),
+        yaxis=dict(title="Elapsed time (ms)"),
+        boxmode="group",
+        template="plotly_white",
+        legend_title="Language",
     )
     return fig
