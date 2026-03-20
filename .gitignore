@@ -59,7 +59,9 @@ shared-data/*.tsv
 shared-data/*.json
 
 # Ignore report generated files
-reports/*
+reports/*.md
+reports/*.html
+
 
 # Itnore Jupyter Notebooks, used for prototyping and exploration, but not intended for version control
 *.ipynb

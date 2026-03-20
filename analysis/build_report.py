@@ -3,24 +3,23 @@
 Reads the three canonical CSV tables from ``shared-data/`` and writes a
 self-contained, single-file HTML report to ``reports/benchmark_report.html``.
 
-The report follows a four-section narrative structure:
+The report follows a five-section narrative structure:
 
-1. **Introduction** — context, methodology brief, and an AI-generated
-   disclaimer so readers understand the provenance of the document.
-2. **Batch timing** — total elapsed time per benchmark batch run, giving
-   the reader an immediate sense of warm-up behaviour and run-to-run
-   stability *before* any per-language breakdowns.
-3. **Cross-language comparison** — a multi-line scaling chart, a
-   per-workload bar chart with a dropdown selector, and a coefficient-of-
-   variation consistency chart, all shown side-by-side across all five
-   languages.
-4. **Per-language scaling** — a dropdown selector cycles through each
-   language, revealing its scaling curve and a nested workload dropdown for
-   inspecting individual trial-time histograms.
+1. **Introduction** — personal welcome, what the reader will find, and a
+   note on AI assistance with clear author commentary placeholders.
+2. **Methodology** — collapsible walkthrough of how the underlying data
+   was built (benchmark design, tooling, analysis pipeline).
+3. **Batch timing** — total elapsed time per benchmark batch run, with
+   insight cards highlighting key statistics and warm-up behaviour.
+4. **Cross-language comparison** — scaling charts, per-workload bar charts,
+   ridgeline distributions, and CV consistency, each prefaced with stat
+   highlights and chart interaction tips.
+5. **Per-language scaling** — dropdown-driven per-language deep dives with
+   scaling curves and trial histograms.
 
-All charts are Plotly figures embedded as inline ``<div>`` + ``<script>``
-blocks.  Plotly is loaded once from the public CDN, so an internet connection
-is required when the HTML file is first opened in a browser.
+CSS and JS are maintained as separate files under ``reports/assets/`` for
+easier editing, then inlined at build time so the output is still a single
+self-contained HTML file.
 
 Typical usage (from repo root)::
 
@@ -57,7 +56,6 @@ from analyze_tables import (  # noqa: E402 — must follow sys.path insertion
     plot_batch_timing_trend,
     plot_cross_language_at_workload,
     plot_cross_language_consistency,
-    plot_cross_language_scaling,
     plot_mean_time_by_workload,
     plot_mean_vs_cv_all,
     plot_ridgeline,
@@ -94,194 +92,63 @@ LANGUAGES = ["cpp", "go", "java", "python", "rust"]
 WORKLOADS = [100, 1_000, 10_000, 100_000, 1_000_000]
 
 # ---------------------------------------------------------------------------
-# CSS
+# Asset loading – CSS and JS live in reports/assets/ for easy editing.
+# They are read at build time and inlined so the HTML stays self-contained.
 # ---------------------------------------------------------------------------
 
-_CSS = """
-* { box-sizing: border-box; margin: 0; padding: 0; }
+# Resolve the repo root relative to *this* file (analysis/build_report.py).
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_ASSETS_DIR = _REPO_ROOT / "reports" / "assets"
 
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                 Helvetica, Arial, sans-serif;
-    font-size: 16px;
-    line-height: 1.65;
-    color: #1a1a2e;
-    background: #f8f9fa;
-    padding: 2rem 1rem;
-}
 
-.report-wrapper {
-    max-width: 1140px;
-    margin: 0 auto;
-    background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-    padding: 3rem 3.5rem;
-}
-
-/* ---- Typography ---- */
-h1 {
-    font-size: 2.2rem;
-    font-weight: 700;
-    color: #0d1b2a;
-    margin-bottom: 0.4rem;
-}
-.report-subtitle {
-    font-size: 1.05rem;
-    color: #6c757d;
-    margin-bottom: 2.5rem;
-}
-h2 {
-    font-size: 1.55rem;
-    font-weight: 700;
-    color: #0d1b2a;
-    margin: 2.8rem 0 0.6rem;
-    padding-bottom: 0.4rem;
-    border-bottom: 2px solid #e9ecef;
-}
-h3 {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #1a1a2e;
-    margin: 1.8rem 0 0.5rem;
-}
-h4 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #495057;
-    margin: 1.4rem 0 0.4rem;
-}
-p { margin-bottom: 1rem; color: #343a40; }
-ul { padding-left: 1.4rem; margin-bottom: 1rem; }
-li { margin-bottom: 0.25rem; }
-
-/* ---- Disclaimer box ---- */
-.disclaimer {
-    background: #fff8e7;
-    border-left: 4px solid #f0a500;
-    border-radius: 4px;
-    padding: 1rem 1.2rem;
-    margin: 1.5rem 0 2rem;
-    font-size: 0.92rem;
-    color: #5a4a00;
-}
-.disclaimer strong { color: #3d3000; }
-
-/* ---- Sections ---- */
-.section { margin-bottom: 3rem; }
-
-/* ---- Dropdown controls ---- */
-.dropdown-control {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin: 1.25rem 0 0.5rem;
-    flex-wrap: wrap;
-}
-.dropdown-control label {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #495057;
-    white-space: nowrap;
-}
-.dropdown-control select {
-    padding: 0.35rem 0.75rem;
-    border: 1px solid #ced4da;
-    border-radius: 5px;
-    font-size: 0.9rem;
-    background: #fff;
-    cursor: pointer;
-    color: #212529;
-    transition: border-color 0.15s;
-}
-.dropdown-control select:focus {
-    outline: none;
-    border-color: #4a90d9;
-    box-shadow: 0 0 0 2px rgba(74,144,217,0.2);
-}
-
-/* ---- Chart panels (show/hide via JS) ---- */
-.chart-panel { display: none; }
-.chart-panel.active { display: block; opacity: 1; transition: opacity 0.15s ease; }
-.chart-panel.resizing { opacity: 0; transition: none; }
-
-/* ---- Stats table ---- */
-.stats-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-    margin: 1rem 0 1.5rem;
-}
-.stats-table th, .stats-table td {
-    text-align: right;
-    padding: 0.45rem 0.75rem;
-    border-bottom: 1px solid #e9ecef;
-}
-.stats-table th {
-    background: #f1f3f5;
-    font-weight: 600;
-    color: #495057;
-    text-align: center;
-}
-.stats-table td:first-child {
-    text-align: left;
-    font-weight: 600;
-}
-.stats-table tr:hover td { background: #f8f9fa; }
-
-/* ---- Language badge dot (legend reference) ---- */
-.lang-dot {
-    display: inline-block;
-    width: 11px; height: 11px;
-    border-radius: 50%;
-    margin-right: 5px;
-    vertical-align: middle;
-}
-
-/* ---- Divider ---- */
-.section-divider {
-    border: none;
-    border-top: 1px solid #e9ecef;
-    margin: 2.5rem 0;
-}
-"""
+def _load_asset(filename: str) -> str:
+    """Read a text asset from ``reports/assets/``."""
+    path = _ASSETS_DIR / filename
+    return path.read_text(encoding="utf-8")
 
 # ---------------------------------------------------------------------------
-# JavaScript
+# HTML helpers – insight cards, author notes, chart tips
 # ---------------------------------------------------------------------------
 
-_JS = """
-/**
- * switchPanel(prefix, value)
- *
- * Generic panel-switcher used by every dropdown in the report.
- * Hides all <div> elements whose id starts with `prefix + "-"` and then
- * reveals only the one whose id is `prefix + "-" + value`.
- *
- * This single function drives both the cross-language workload dropdown
- * (prefix = "xwl") and the per-language language/histogram dropdowns.
- */
-function switchPanel(prefix, value) {
-    // Collect all sibling panels for this group and deactivate them.
-    document.querySelectorAll('[id^="' + prefix + '-"]').forEach(function(el) {
-        el.classList.remove('active');
-    });
-    // Activate the selected panel.
-    var target = document.getElementById(prefix + '-' + value);
-    if (target) {
-        // Make the panel part of layout (display:block) but invisible
-        // so Plotly can measure container width without a visible flash.
-        target.classList.add('active', 'resizing');
-        target.querySelectorAll('.js-plotly-plot').forEach(function(plot) {
-            Plotly.Plots.resize(plot);
-        });
-        // Allow one frame for the resize to land, then fade in.
-        requestAnimationFrame(function() {
-            target.classList.remove('resizing');
-        });
-    }
-}
-"""
+
+def _insight_card(value: str, label: str) -> str:
+    """Render a single stat-highlight card."""
+    return (
+        f'<div class="insight-card">'
+        f'<div class="insight-value">{value}</div>'
+        f'<div class="insight-label">{label}</div>'
+        f'</div>'
+    )
+
+
+def _insight_row(cards: list[str]) -> str:
+    """Wrap multiple insight cards in a flex row."""
+    return '<div class="insight-row">' + "".join(cards) + "</div>"
+
+
+def _chart_tip(text: str) -> str:
+    """Render a small green interaction-tip box."""
+    return (
+        '<div class="chart-tip">'
+        '<span class="tip-icon">&#128270;</span>'  # magnifying glass
+        f"<span>{text}</span>"
+        "</div>"
+    )
+
+
+def _author_note(placeholder_text: str) -> str:
+    """Render a blue author-commentary placeholder box.
+
+    The placeholder text is wrapped in ``<em class="placeholder">`` so it
+    is visually distinguishable from actual author prose once filled in.
+    """
+    return (
+        '<div class="author-note">'
+        '<strong>Author\'s take:</strong> '
+        f'<em class="placeholder">{placeholder_text}</em>'
+        "</div>"
+    )
+
 
 # ---------------------------------------------------------------------------
 # Low-level HTML helpers
@@ -412,69 +279,161 @@ def _dropdown(
 def _section_intro() -> str:
     """Return the HTML for Section 1: Introduction.
 
-    Covers the experiment design, languages tested, workload sizes, and an
-    AI-generated disclaimer explaining how the report was produced.
+    A personable welcome, what the reader will find, and a nuanced AI
+    disclaimer that clarifies the author's role alongside AI tooling.
 
     Returns:
         HTML string for the introductory section.
     """
     return """
 <section class="section" id="intro">
-<h2>1 &mdash; Introduction</h2>
+<h2>1 &mdash; Welcome</h2>
 
 <p>
-This report presents the results of the <strong>DiceLab benchmark</strong>,
-a cross-language experiment measuring the execution time of a simulated
-dice-rolling workload implemented identically in five languages:
+Thanks for reading the <strong>DiceLab benchmark report</strong>.
+This is a cross-language experiment where I implemented the same
+dice-rolling simulation in five languages &mdash;
 <strong>C++</strong>, <strong>Go</strong>, <strong>Java</strong>,
-<strong>Python</strong>, and <strong>Rust</strong>.
+<strong>Python</strong>, and <strong>Rust</strong> &mdash; and then
+measured how they compare under identical workloads.
 </p>
 
-<p>The experiment is designed to answer three questions:</p>
+<p>The report is organised around three questions:</p>
 <ul>
   <li>How do the five implementations compare at the same workload size?</li>
-  <li>How does each implementation scale as the number of rolls grows from
+  <li>How does each implementation scale as rolls grow from
       100 to 1&nbsp;million?</li>
-  <li>How consistent is timing within each language across repeated runs?</li>
+  <li>How consistent (repeatable) is each language's timing
+      across many trials?</li>
 </ul>
 
-<h3>Methodology</h3>
 <p>
-Each benchmark session consists of <strong>10 batch runs</strong>.  Within
-each batch, every language is executed at five workload levels
-(100, 1&nbsp;K, 10&nbsp;K, 100&nbsp;K, and 1&nbsp;M rolls), each repeated
-for <strong>5 trials</strong>.  This yields 50 timed observations per
-(language, workload) pair — 1&nbsp;250 rows in total.
-</p>
-<p>
-All implementations roll a configurable number of six-sided dice using a
-pseudo-random number generator seeded per run.  Timing captures only the
-roll loop itself, excluding process start-up and I/O overhead as much as
-the CLI wrapper permits.
+Everything here is interactive.  Charts are powered by
+<a href="https://plotly.com/javascript/" target="_blank" rel="noopener">Plotly.js</a>,
+so you can hover for details, zoom into regions, and toggle traces on
+and off via the legend.  Several sections include dropdowns to switch
+between workloads or languages.  I&rsquo;ve also included my own
+commentary throughout &mdash; look for the blue &ldquo;Author&rsquo;s
+take&rdquo; boxes.
 </p>
 
+""" + _author_note(
+        "Replace this placeholder with your personal introduction &mdash; "
+        "why you built DiceLab, what you hoped to learn, and anything the "
+        "reader should keep in mind while exploring the data."
+    ) + """
+
 <div class="disclaimer">
-  <strong>&#9888; AI-generated report.</strong>
-  This report — including its prose, chart commentary, and section
-  structure — was generated with the assistance of an AI coding assistant
-  (GitHub Copilot / Claude Sonnet 4.6) as part of an article on using AI
-  tools for software engineering workflows.  All figures are derived from
-  real benchmark measurements; the interpretive text should be treated as a
-  starting point for human review rather than a final authoritative analysis.
+  <strong>&#9888; A note on AI assistance.</strong>
+  The code that generated this report &mdash; data loading, chart
+  construction, and the HTML scaffolding &mdash; was written with the help
+  of an AI coding assistant (GitHub Copilot).  The benchmark data itself is
+  real, measured on my machine, and the interpretive prose is my own
+  (except where marked as a placeholder).  Think of the AI as a power tool:
+  I directed the design and reviewed every output.
 </div>
 </section>
 """
 
 
-def _section_batch(batch_table) -> str:
-    """Return the HTML for Section 2: Batch Timing.
+def _section_methodology(batch_table, run_table) -> str:
+    """Return the HTML for Section 2: Methodology (collapsible).
 
-    Embeds the enhanced batch timing trend chart (with rolling-mean overlay
-    and ±1 std band) and provides brief interpretive text explaining warm-up
-    effects and what to look for.
+    Walks the reader through the data pipeline: benchmark design, tooling,
+    how the CSV tables were produced, and what the numbers represent.
 
     Args:
         batch_table: DataFrame from :func:`load_batch_table`.
+        run_table: Per-trial DataFrame from :func:`load_run_table`.
+
+    Returns:
+        HTML string for the methodology section.
+    """
+    n_batches = len(batch_table)
+    n_rows = len(run_table)
+    n_languages = run_table["language"].nunique()
+    n_workloads = run_table["rolls"].nunique()
+    trials_per = n_rows // (n_batches * n_languages * n_workloads) if n_batches else 0
+
+    return f"""
+<section class="section" id="methodology">
+<h2>2 &mdash; Methodology</h2>
+
+<p>
+Understanding <em>how</em> the data was collected is just as important as
+the results themselves.  This section walks through the benchmark design,
+the tooling, and the analysis pipeline so you can judge the results on
+their merits.
+</p>
+
+<details class="collapsible" open>
+<summary>Benchmark design &amp; data pipeline</summary>
+<div class="details-body">
+
+<ol class="methodology-steps">
+  <li>
+    <strong>Implementation.</strong>  The same dice simulation was coded in
+    five languages (C++, Go, Java, Python, Rust), each following a shared
+    <a href="https://github.com" target="_blank" rel="noopener">functional
+    spec</a>.  Every implementation accepts the same CLI contract: number
+    of rolls, number of sides, and an optional seed.
+  </li>
+  <li>
+    <strong>Build configuration.</strong>  Compiled languages use optimised
+    release builds (e.g.&nbsp;<code>-O3</code> for C++,
+    <code>cargo build --release</code> for Rust).  Python runs on the
+    standard CPython interpreter with no special flags.
+  </li>
+  <li>
+    <strong>Benchmark execution.</strong>  The orchestrator
+    (<code>benchmarks/benchmark_runner.py</code>) runs
+    <strong>{n_batches} batch runs</strong>.  In each batch, every language
+    is exercised at {n_workloads} workload levels
+    (100, 1&nbsp;K, 10&nbsp;K, 100&nbsp;K, 1&nbsp;M rolls)
+    for <strong>{trials_per} trials</strong> each.  Timing captures only the
+    roll loop, excluding process start-up and I/O overhead where possible.
+  </li>
+  <li>
+    <strong>Raw output.</strong>  The runner writes a structured JSON report
+    to <code>benchmarks/results/benchmark_report.json</code> containing
+    per-trial timings, batch metadata, and environment info.
+  </li>
+  <li>
+    <strong>Analysis pipeline.</strong>  Running
+    <code>python analysis/run_analysis.py</code> normalises the JSON into
+    three canonical CSV tables under <code>shared-data/</code>:
+    <ul>
+      <li><strong>Run table</strong> &mdash; {n_rows:,} rows, one per timed
+          trial (the most granular view).</li>
+      <li><strong>Batch table</strong> &mdash; {n_batches} rows, one per
+          full benchmark batch.</li>
+      <li><strong>Workload summary</strong> &mdash; pre-aggregated mean,
+          median, std, min, max per (language, workload) pair.</li>
+    </ul>
+  </li>
+  <li>
+    <strong>Report generation.</strong>  This HTML report is built from those
+    CSVs by <code>python analysis/build_report.py</code>.  Charts are
+    Plotly figures; prose and stats are computed at build time.
+  </li>
+</ol>
+
+</div>
+</details>
+</section>
+"""
+
+
+def _section_batch(batch_table, run_table) -> str:
+    """Return the HTML for Section 3: Batch Timing.
+
+    Embeds the enhanced batch timing trend chart (with rolling-mean overlay
+    and +/-1 std band), insight cards, a chart interaction tip, and an
+    author commentary placeholder.
+
+    Args:
+        batch_table: DataFrame from :func:`load_batch_table`.
+        run_table: Per-trial DataFrame from :func:`load_run_table`.
 
     Returns:
         HTML string for the batch timing section.
@@ -482,51 +441,84 @@ def _section_batch(batch_table) -> str:
     fig = plot_batch_timing_trend(batch_table)
     chart_html = _fig_to_div(fig)
 
-    # Compute a few inline stats to make the prose data-driven.
-    first_ms = batch_table.sort_values("run_id")["elapsed_ms"].iloc[0]
-    last_ms  = batch_table.sort_values("run_id")["elapsed_ms"].iloc[-1]
+    # Compute inline stats to make the prose data-driven.
+    sorted_batch = batch_table.sort_values("run_id")
+    first_ms = sorted_batch["elapsed_ms"].iloc[0]
+    last_ms  = sorted_batch["elapsed_ms"].iloc[-1]
     mean_ms  = batch_table["elapsed_ms"].mean()
+    std_ms   = batch_table["elapsed_ms"].std()
+    cv_pct   = (std_ms / mean_ms * 100) if mean_ms else 0
+    n_batches = len(batch_table)
+
+    # Derive per-batch execution count from the data itself.
+    n_languages = run_table["language"].nunique()
+    n_workloads = run_table["rolls"].nunique()
+    trials_per  = len(run_table) // (n_batches * n_languages * n_workloads) if n_batches else 0
+    execs_per_batch = n_languages * n_workloads * trials_per
+
+    cards = _insight_row([
+        _insight_card(f"{n_batches}", "Batch runs"),
+        _insight_card(f"{mean_ms/1000:.1f} s", "Mean batch time"),
+        _insight_card(f"{std_ms/1000:.2f} s", "Std deviation"),
+        _insight_card(f"{cv_pct:.1f}%", "Coefficient of variation"),
+    ])
+
+    tip = _chart_tip(
+        "Hover over any point to see exact timing.  "
+        "Click a legend entry to toggle that trace on or off.  "
+        "Double-click a legend entry to isolate it."
+    )
+
+    author = _author_note(
+        "What do you notice about the batch-to-batch stability?  "
+        "Were there any surprising warm-up effects or late-run drift?  "
+        "Replace this with your observations."
+    )
 
     return f"""
 <section class="section" id="batch-timing">
-<h2>2 &mdash; Batch Timing Overview</h2>
+<h2>3 &mdash; Batch Timing Overview</h2>
 
 <p>
-Before examining individual languages, it is useful to look at how long
+Before examining individual languages, let&rsquo;s look at how long
 each <em>complete</em> benchmark batch took end-to-end.  Each batch
-exercises all five languages across all five workload levels for five
-trials — so a single batch applies <strong>125 timed executions</strong>.
+exercises all {n_languages} languages across all {n_workloads} workload levels
+for {trials_per} trials each &mdash;
+so a single batch applies <strong>{execs_per_batch} timed executions</strong>.
 </p>
+
+{cards}
 
 <p>
-The chart below plots total batch elapsed time (in milliseconds) against
-batch run index.  A downward trend at the start is the expected signature
-of warm-up effects: the operating system's branch predictor, file-system
-cache, and — in Java's case — the JVM's JIT compiler all improve over the
-first few runs.  A rising trend or high late-run variance would suggest
-sustained system load or thermal throttling.
+The chart below plots total batch elapsed time against batch run index.
+A downward trend at the start is the expected signature of warm-up
+effects: the OS&rsquo;s branch predictor, file-system cache, and &mdash;
+in Java&rsquo;s case &mdash; the JVM&rsquo;s JIT compiler all improve
+over the first few runs.  A rising trend or high late-run variance
+would suggest sustained system load or thermal throttling.
 </p>
 
+{tip}
 {chart_html}
 
 <p>
 The first batch completed in <strong>{first_ms/1000:.2f}&nbsp;s</strong>;
-the last in <strong>{last_ms/1000:.2f}&nbsp;s</strong>.  The mean across
-all ten batches was <strong>{mean_ms/1000:.2f}&nbsp;s</strong>.
+the last in <strong>{last_ms/1000:.2f}&nbsp;s</strong>.  Across all
+{n_batches} batches the mean was <strong>{mean_ms/1000:.2f}&nbsp;s</strong>
+with a standard deviation of {std_ms/1000:.2f}&nbsp;s
+(CV&nbsp;=&nbsp;{cv_pct:.1f}%), indicating
+{"very stable" if cv_pct < 3 else "moderate"} run-to-run performance.
 </p>
+
+{author}
 </section>
 """
 
 
 def _section_cross_language(workload_summary, run_table) -> str:
-    """Return the HTML for Section 3: Cross-Language Comparison.
+    """Return the HTML for Section 4: Cross-Language Comparison.
 
-    Embeds six charts:
-    - A multi-line scaling chart with ±1 std band for all languages.
-    - A per-workload bar chart hidden behind a dropdown selector.
-    - A mean-vs-CV scatter plot.
-    - A ridgeline (joy) plot of elapsed time KDEs (dropdown per workload).
-    - A coefficient-of-variation consistency chart.
+    Embeds charts with insight cards and chart interaction tips.
 
     Args:
         workload_summary: DataFrame from :func:`load_workload_summary`.
@@ -535,6 +527,46 @@ def _section_cross_language(workload_summary, run_table) -> str:
     Returns:
         HTML string for the cross-language section.
     """
+    # ---- Compute headline stats for insight cards ----
+    ws = workload_summary.copy()
+    ws = add_coefficient_of_variation(ws)
+
+    fastest_lang = ws.loc[ws["mean_ms"].idxmin(), "language"]
+    fastest_mean = ws["mean_ms"].min()
+    slowest_lang = ws.loc[ws["mean_ms"].idxmax(), "language"]
+    slowest_mean = ws["mean_ms"].max()
+    speed_ratio  = slowest_mean / fastest_mean if fastest_mean else 0
+
+    # At 1M rolls specifically
+    ws_1m = ws[ws["rolls"] == 1_000_000]
+    if len(ws_1m):
+        fastest_1m = ws_1m.loc[ws_1m["mean_ms"].idxmin(), "language"]
+        slowest_1m = ws_1m.loc[ws_1m["mean_ms"].idxmax(), "language"]
+        ratio_1m = ws_1m["mean_ms"].max() / ws_1m["mean_ms"].min()
+    else:
+        fastest_1m, slowest_1m, ratio_1m = "—", "—", 0
+
+    # Most consistent (lowest CV across all workloads)
+    mean_cv = ws.groupby("language")["cv_pct"].mean()
+    most_consistent = mean_cv.idxmin()
+    most_consistent_cv = mean_cv.min()
+
+    cards = _insight_row([
+        _insight_card(
+            f"{ratio_1m:.1f}&times;",
+            f"Speed gap at 1M rolls ({LANGUAGE_DISPLAY.get(slowest_1m, slowest_1m)} "
+            f"vs {LANGUAGE_DISPLAY.get(fastest_1m, fastest_1m)})",
+        ),
+        _insight_card(
+            LANGUAGE_DISPLAY.get(most_consistent, most_consistent),
+            f"Most consistent (avg CV {most_consistent_cv:.1f}%)",
+        ),
+        _insight_card(
+            f"{len(run_table):,}",
+            "Total timed trials",
+        ),
+    ])
+
     # ---- Scaling chart with ±1 std band (always visible) ----
     scaling_fig  = plot_mean_time_by_workload(workload_summary)
     scaling_html = _fig_to_div(scaling_fig)
@@ -575,39 +607,65 @@ def _section_cross_language(workload_summary, run_table) -> str:
     cv_fig  = plot_cross_language_consistency(workload_summary)
     cv_html = _fig_to_div(cv_fig)
 
-    # ---- Summary stats table ----
+    # ---- Summary stats table (collapsible) ----
     table_html = _stats_table_html(workload_summary)
+
+    scaling_tip = _chart_tip(
+        "Click any language name in the legend to hide/show its line.  "
+        "Double-click to isolate one language.  Drag to zoom into a region; "
+        "double-click the chart background to reset."
+    )
+
+    bar_tip = _chart_tip(
+        "Use the dropdown above to switch workload levels.  "
+        "Hover over a bar to see the exact mean and standard deviation."
+    )
+
+    ridge_tip = _chart_tip(
+        "Switch workload levels with the dropdown.  "
+        "Wider ridges indicate more timing variability for that language."
+    )
+
+    author_cross = _author_note(
+        "What stands out to you in the cross-language comparison?  "
+        "Is the Python scaling surprise expected?  How do the compiled "
+        "languages compare among themselves?  Replace this with your analysis."
+    )
 
     return f"""
 <section class="section" id="cross-language">
-<h2>3 &mdash; Cross-Language Comparison</h2>
+<h2>4 &mdash; Cross-Language Comparison</h2>
 
 <p>
 This section compares all five languages directly.  We start with the
-broadest view — how mean execution time evolves across the full workload
-range — before zooming into individual workload snapshots, distribution
-shapes, and finishing with dimensionless consistency metrics.
+broadest view &mdash; how mean execution time evolves across the full workload
+range &mdash; before zooming into individual workload snapshots, distribution
+shapes, and dimensionless consistency metrics.
 </p>
+
+{cards}
 
 <h3>Scaling Trend</h3>
 <p>
 The chart below places all five languages on the same log-scaled x-axis,
-with a shaded ±1 standard deviation band around each line.  A narrower
+with a shaded &plusmn;1 standard deviation band around each line.  A narrower
 band indicates more consistent timing across repeated trials.
 Lines running <em>parallel</em> imply each language shares the same scaling
 exponent.  A line that diverges upward signals worse asymptotic behaviour
-at large inputs — most visible for Python at the 1&nbsp;M-roll level.
+at large inputs &mdash; most visible for Python at the 1&nbsp;M-roll level.
 </p>
 
+{scaling_tip}
 {scaling_html}
 
 <h3>Per-Workload Snapshot</h3>
 <p>
 Use the dropdown to inspect magnitude comparisons at a single fixed
 workload.  Bars are sorted by mean execution time in ascending order.
-Error bars show ±1 standard deviation across all trials.
+Error bars show &plusmn;1 standard deviation across all trials.
 </p>
 
+{bar_tip}
 {xwl_dropdown}
 {xwl_panels_html}
 
@@ -615,9 +673,9 @@ Error bars show ±1 standard deviation across all trials.
 <p>
 The scatter plot below maps each (language, workload) combination onto
 two axes: mean execution time on the x-axis and coefficient of variation
-(CV = std / mean) on the y-axis.  Marker size encodes workload level.
-Points in the <em>bottom-left</em> corner are both fast and consistent —
-the ideal outcome.
+(CV&nbsp;=&nbsp;std&nbsp;/&nbsp;mean) on the y-axis.  Marker size encodes
+workload level.  Points in the <em>bottom-left</em> corner are both fast
+and consistent &mdash; the ideal outcome.
 </p>
 
 {cv_scatter_html}
@@ -630,17 +688,17 @@ switch between workload levels.  A narrow, symmetric ridge indicates
 stable timing; a wide or skewed ridge suggests variability.
 </p>
 
+{ridge_tip}
 {ridge_dropdown}
 {ridge_panels_html}
 
 <h3>Timing Consistency (Coefficient of Variation)</h3>
 <p>
 Raw standard deviation cannot be fairly compared between a language timing
-at ~12&nbsp;ms (Rust) and one at ~65&nbsp;ms (Python) — the absolute
+at ~12&nbsp;ms (Rust) and one at ~65&nbsp;ms (Python) &mdash; the absolute
 spread naturally differs.  The <strong>coefficient of variation</strong>
 (CV&nbsp;=&nbsp;std&nbsp;/&nbsp;mean&nbsp;&times;&nbsp;100&nbsp;%) normalises
-spread relative to the mean, making consistency directly comparable across
-all languages.
+spread relative to the mean, making consistency directly comparable.
 </p>
 <p>
 A flat, low CV indicates reliable timing.  A high or climbing CV suggests
@@ -650,18 +708,33 @@ variability, or memory-pressure effects at that workload level.
 
 {cv_html}
 
+{author_cross}
+
 <h3>Summary Statistics</h3>
+<p>
+The full table of descriptive statistics for every (language, workload)
+combination is available below.  Expand it for the raw numbers behind the
+charts above.
+</p>
+
+<details class="collapsible">
+<summary>Show full summary statistics table</summary>
+<div class="details-body">
 {table_html}
+</div>
+</details>
 </section>
 """
 
 
 def _section_per_language(run_table, workload_summary) -> str:
-    """Return the HTML for Section 4: Per-Language Scaling.
+    """Return the HTML for Section 5: Per-Language Scaling.
 
     Embeds a top-level language dropdown.  Each language panel contains:
-    - A scaling curve (mean ± std vs rolls, log x-axis).
+    - Insight cards with key stats for that language.
+    - A scaling curve (mean +/- std vs rolls, log x-axis).
     - A nested workload dropdown controlling per-workload trial histograms.
+    - An author commentary placeholder.
 
     Args:
         run_table: Per-trial DataFrame from :func:`load_run_table`.
@@ -671,6 +744,8 @@ def _section_per_language(run_table, workload_summary) -> str:
     Returns:
         HTML string for the per-language section.
     """
+    ws = add_coefficient_of_variation(workload_summary)
+
     # Top-level language dropdown.
     lang_dropdown = _dropdown(
         label="Select language:",
@@ -679,11 +754,35 @@ def _section_per_language(run_table, workload_summary) -> str:
         options=[(lang, LANGUAGE_DISPLAY[lang]) for lang in LANGUAGES],
     )
 
+    tip = _chart_tip(
+        "Select a language from the dropdown to load its charts.  "
+        "Within each language, use the workload dropdown to see "
+        "individual trial-time histograms.  Hover for exact values."
+    )
+
     # Build one panel per language.
     lang_panels = []
     for i, lang in enumerate(LANGUAGES):
         display = LANGUAGE_DISPLAY[lang]
         color   = LANGUAGE_COLORS[lang]
+
+        # --- Compute per-language stats ---
+        lang_ws = ws[ws["language"] == lang].sort_values("rolls")
+        small_mean = lang_ws[lang_ws["rolls"] == 100]["mean_ms"].values
+        large_mean = lang_ws[lang_ws["rolls"] == 1_000_000]["mean_ms"].values
+        small_str  = f"{small_mean[0]:.1f}" if len(small_mean) else "—"
+        large_str  = f"{large_mean[0]:.1f}" if len(large_mean) else "—"
+
+        growth = float(large_mean[0]) / float(small_mean[0]) if (len(small_mean) and len(large_mean) and small_mean[0] > 0) else 0
+        avg_cv = lang_ws["cv_pct"].mean() if "cv_pct" in lang_ws.columns else 0
+        median_all = lang_ws["median_ms"].median()
+
+        lang_cards = _insight_row([
+            _insight_card(f"{small_str} ms", "Mean at 100 rolls"),
+            _insight_card(f"{large_str} ms", "Mean at 1M rolls"),
+            _insight_card(f"{growth:.1f}&times;", "Growth factor (100 &rarr; 1M)"),
+            _insight_card(f"{avg_cv:.1f}%", "Avg CV across workloads"),
+        ])
 
         # --- Scaling chart for this language ---
         scale_fig  = plot_scaling_within_language(run_table, lang)
@@ -706,28 +805,24 @@ def _section_per_language(run_table, workload_summary) -> str:
             )
         hist_panels_html = "\n".join(hist_panels)
 
-        # Pull a few summary numbers from workload_summary for prose.
-        lang_summary = workload_summary[workload_summary["language"] == lang]
-        small_mean   = lang_summary[lang_summary["rolls"] == 100]["mean_ms"].values
-        large_mean   = lang_summary[lang_summary["rolls"] == 1_000_000]["mean_ms"].values
-        small_str    = f"{small_mean[0]:.1f}&nbsp;ms" if len(small_mean) else "—"
-        large_str    = f"{large_mean[0]:.1f}&nbsp;ms" if len(large_mean) else "—"
+        lang_author = _author_note(
+            f"What surprised you about {display}'s performance profile?  "
+            f"Replace this with your observations about {display}."
+        )
 
         lang_content = f"""
 <h3>
   <span class="lang-dot" style="background:{color}"></span>
   {display}
 </h3>
-<p>
-  Mean execution time at 100 rolls: <strong>{small_str}</strong>.
-  Mean at 1&nbsp;M rolls: <strong>{large_str}</strong>.
-</p>
+
+{lang_cards}
 
 <h4>Scaling Curve</h4>
 <p>
   The line below shows how mean elapsed time changes as the workload grows.
-  Error bars are ±1 standard deviation across all trials at that level.
-  A nearly flat line indicates sub-linear scaling — the fixed overhead
+  Error bars are &plusmn;1 standard deviation across all trials at that level.
+  A nearly flat line indicates sub-linear scaling &mdash; the fixed overhead
   dominates timing at most workload sizes.
 </p>
 {scale_html}
@@ -736,11 +831,13 @@ def _section_per_language(run_table, workload_summary) -> str:
 <p>
   Select a workload below to examine the histogram of individual trial
   times.  A tight, symmetric histogram indicates stable timing.
-  A long right tail implies occasional outlier runs — likely from OS
-  scheduling preemptions or, in Java's case, JIT compilation events.
+  A long right tail implies occasional outlier runs &mdash; likely from OS
+  scheduling preemptions or, in Java&rsquo;s case, JIT compilation events.
 </p>
 {hist_dropdown}
 {hist_panels_html}
+
+{lang_author}
 """
         lang_panels.append(_panel(lang_content, f"lang-{lang}", active=(i == 0)))
 
@@ -748,7 +845,7 @@ def _section_per_language(run_table, workload_summary) -> str:
 
     return f"""
 <section class="section" id="per-language">
-<h2>4 &mdash; Per-Language Scaling</h2>
+<h2>5 &mdash; Per-Language Scaling</h2>
 
 <p>
 The cross-language view in the previous section shows the <em>relative</em>
@@ -756,10 +853,8 @@ picture across all languages at once.  This section zooms into each
 language individually, revealing the shape of its scaling curve and the
 distribution of individual trial times at each workload level.
 </p>
-<p>
-Select a language from the dropdown to load its charts.
-</p>
 
+{tip}
 {lang_dropdown}
 {lang_panels_html}
 </section>
@@ -780,10 +875,11 @@ def build_report(
     This is the top-level entry point called by :func:`main`.  It:
 
     1. Loads all three canonical CSV tables from *shared_data_dir*.
-    2. Builds each of the four HTML sections by calling the section
+    2. Loads CSS and JS from ``reports/assets/``.
+    3. Builds each of the five HTML sections by calling the section
        builder functions.
-    3. Wraps them in a full HTML document shell with embedded CSS and JS.
-    4. Writes the finished file to *output_path*, creating the parent
+    4. Wraps them in a full HTML document shell with inlined CSS and JS.
+    5. Writes the finished file to *output_path*, creating the parent
        directory if needed.
 
     Args:
@@ -802,11 +898,16 @@ def build_report(
     batch_table      = load_batch_table(shared_data_dir)
     workload_summary = load_workload_summary(shared_data_dir)
 
+    print("[build_report] Loading assets …")
+    css = _load_asset("report.css")
+    js  = _load_asset("report.js")
+
     print("[build_report] Building sections …")
     s1 = _section_intro()
-    s2 = _section_batch(batch_table)
-    s3 = _section_cross_language(workload_summary, run_table)
-    s4 = _section_per_language(run_table, workload_summary)
+    s2 = _section_methodology(batch_table, run_table)
+    s3 = _section_batch(batch_table, run_table)
+    s4 = _section_cross_language(workload_summary, run_table)
+    s5 = _section_per_language(run_table, workload_summary)
 
     # ---- Assemble the full HTML document ----
     html = f"""<!DOCTYPE html>
@@ -816,14 +917,14 @@ def build_report(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{_REPORT_TITLE}</title>
   {_PLOTLY_CDN}
-  <style>{_CSS}</style>
+  <style>{css}</style>
 </head>
 <body>
 <div class="report-wrapper">
 
   <h1>{_REPORT_TITLE}</h1>
   <p class="report-subtitle">
-    DiceLab cross-language benchmark — C++, Go, Java, Python, Rust
+    DiceLab cross-language benchmark &mdash; C++, Go, Java, Python, Rust
   </p>
 
   {s1}
@@ -833,9 +934,11 @@ def build_report(
   {s3}
   <hr class="section-divider">
   {s4}
+  <hr class="section-divider">
+  {s5}
 
 </div>
-<script>{_JS}</script>
+<script>{js}</script>
 </body>
 </html>"""
 
