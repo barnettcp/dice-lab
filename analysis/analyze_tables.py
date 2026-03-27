@@ -254,6 +254,7 @@ def plot_scaling_within_language(
     agg["std_ms"] = agg["std_ms"].fillna(0)
 
     color = LANGUAGE_COLORS.get(language, "#888888")
+    display = LANGUAGE_DISPLAY.get(language, language)
 
     fig = go.Figure()
     fig.add_trace(
@@ -261,7 +262,7 @@ def plot_scaling_within_language(
             x=agg["rolls"],
             y=agg["mean_ms"],
             mode="lines+markers",
-            name=language,
+            name=display,
             line=dict(color=color, width=2),
             marker=dict(size=8),
             error_y=dict(
@@ -280,7 +281,7 @@ def plot_scaling_within_language(
     )
 
     fig.update_layout(
-        title=f"Execution Time Scaling — {language}",
+        title=f"Execution Time Scaling — {display}",
         xaxis=dict(
             title="Rolls per simulation",
             type="log",
@@ -329,7 +330,7 @@ def plot_trial_histogram_within_language(
         subset,
         x="elapsed_ms",
         nbins=20,
-        title=f"Trial Time Distribution — {language} at {label} rolls",
+        title=f"Trial Time Distribution — {LANGUAGE_DISPLAY.get(language, language)} at {label} rolls",
         color_discrete_sequence=[color],
         template="plotly_white",
     )
@@ -368,17 +369,18 @@ def plot_cross_language_scaling(workload_summary: pd.DataFrame) -> go.Figure:
     for language in sorted(workload_summary["language"].unique()):
         lang_df = workload_summary[workload_summary["language"] == language].sort_values("rolls")
         color = LANGUAGE_COLORS.get(language, "#888888")
+        display = LANGUAGE_DISPLAY.get(language, language)
 
         fig.add_trace(
             go.Scatter(
                 x=lang_df["rolls"],
                 y=lang_df["mean_ms"],
                 mode="lines+markers",
-                name=language,
+                name=display,
                 line=dict(color=color, width=2),
                 marker=dict(size=7),
                 hovertemplate=(
-                    f"<b>{language}</b><br>"
+                    f"<b>{display}</b><br>"
                     "Rolls: %{x:,}<br>"
                     "Mean: %{y:.2f} ms<extra></extra>"
                 ),
@@ -423,10 +425,11 @@ def plot_cross_language_at_workload(
 
     # Build a color list aligned with the sorted order.
     colors = [LANGUAGE_COLORS.get(lang, "#888888") for lang in subset["language"]]
+    display_names = [LANGUAGE_DISPLAY.get(lang, lang) for lang in subset["language"]]
 
     fig = go.Figure(
         go.Bar(
-            x=subset["language"],
+            x=display_names,
             y=subset["mean_ms"],
             error_y=dict(
                 type="data",
@@ -479,17 +482,18 @@ def plot_cross_language_consistency(workload_summary: pd.DataFrame) -> go.Figure
     for language in sorted(df["language"].unique()):
         lang_df = df[df["language"] == language].sort_values("rolls")
         color = LANGUAGE_COLORS.get(language, "#888888")
+        display = LANGUAGE_DISPLAY.get(language, language)
 
         fig.add_trace(
             go.Scatter(
                 x=lang_df["rolls"],
                 y=lang_df["cv_pct"],
                 mode="lines+markers",
-                name=language,
+                name=display,
                 line=dict(color=color, width=2),
                 marker=dict(size=7),
                 hovertemplate=(
-                    f"<b>{language}</b><br>"
+                    f"<b>{display}</b><br>"
                     "Rolls: %{x:,}<br>"
                     "CV: %{y:.1f}%<extra></extra>"
                 ),
