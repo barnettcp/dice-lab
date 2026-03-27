@@ -19,8 +19,22 @@ This folder contains the first-pass analysis workflow for DiceLab benchmark data
 | `build_tables.py` | Core transformation library — loads the benchmark JSON and normalises it into the three canonical DataFrames (`run_table`, `batch_table`, `metadata_table`). Importable from scripts, notebooks, and a future Streamlit dashboard. |
 | `run_analysis.py` | Stage 1 CLI driver — calls `build_tables`, exports CSVs to `shared-data/`, and writes the markdown summary to `reports/`. |
 | `analyze_tables.py` | Analysis and visualization library — loads the canonical CSVs and exposes Plotly chart functions for within-language scaling, trial distributions, cross-language comparisons, consistency (CV), and macro batch trends. Returns `plotly.graph_objects.Figure` objects compatible with both HTML export and Streamlit. |
-| `build_report.py` | Stage 2 HTML report builder — assembles all Plotly figures into a self-contained, single-file HTML report with embedded CSS/JS dropdown navigation. Writes to `reports/benchmark_report.html`. |
+| `build_report.py` | Stage 2 HTML report builder — prepares data contexts and renders Jinja2 templates into a self-contained, single-file HTML report with embedded CSS/JS and Plotly charts. Writes to `reports/benchmark_report.html`. |
 | `run_analytic_pipeline.py` | **Pipeline orchestrator** — runs both stages in sequence. The recommended entry point for producing all outputs from a single command. |
+
+### Templates (`analysis/templates/`)
+
+The HTML for the report is maintained as Jinja2 templates, separate from the Python data logic:
+
+| File | Role |
+|---|---|
+| `base.html` | Document shell — `<!DOCTYPE>`, `<head>` with inlined CSS/JS/Plotly, `<body>` wrapper. Uses `{% include %}` to pull in each section. |
+| `macros.html` | Reusable components — `insight_card`, `insight_row`, `chart_tip`, `author_note`, `dropdown`, `stats_table`. Imported by section templates. |
+| `intro.html` | Section 1: Welcome — static prose, AI disclaimer, author placeholder. |
+| `methodology.html` | Section 2: Methodology — collapsible data-pipeline walkthrough. |
+| `batch.html` | Section 3: Batch Timing — trend chart, insight cards, data-driven prose. |
+| `cross_language.html` | Section 4: Cross-Language Comparison — scaling, bar, ridgeline, CV charts with dropdown navigation. |
+| `per_language.html` | Section 5: Per-Language Scaling — nested dropdowns for language and workload histograms. |
 
 ## Outputs
 

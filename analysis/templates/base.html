@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  {{ plotly_cdn | safe }}
+  <style>{{ css | safe }}</style>
+</head>
+<body>
+<div class="report-wrapper">
+
+  <h1>{{ title }}</h1>
+  <p class="report-subtitle">
+    DiceLab cross-language benchmark &mdash; C++, Go, Java, Python, Rust
+  </p>
+
+  {% include "intro.html" %}
+  <hr class="section-divider">
+  {% include "methodology.html" %}
+  <hr class="section-divider">
+  {% include "batch.html" %}
+  <hr class="section-divider">
+  {% include "cross_language.html" %}
+  <hr class="section-divider">
+  {% include "per_language.html" %}
+
+</div>
+<script>{{ js | safe }}</script>
+</body>
+</html>

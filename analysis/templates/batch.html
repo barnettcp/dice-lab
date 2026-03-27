@@ -1,0 +1,46 @@
+{% import "macros.html" as m %}
+
+<section class="section" id="batch-timing">
+<h2>3 &mdash; Batch Timing Overview</h2>
+
+<p>
+Before examining individual languages, let&rsquo;s look at how long
+each <em>complete</em> benchmark batch took end-to-end.  Each batch
+exercises all {{ batch.n_languages }} languages across all {{ batch.n_workloads }} workload levels
+for {{ batch.trials_per }} trials each &mdash;
+so a single batch applies <strong>{{ batch.execs_per_batch }} timed executions</strong>.
+</p>
+
+{{ m.insight_row(batch.cards) }}
+
+<p>
+The chart below plots total batch elapsed time against batch run index.
+A downward trend at the start is the expected signature of warm-up
+effects: the OS&rsquo;s branch predictor, file-system cache, and &mdash;
+in Java&rsquo;s case &mdash; the JVM&rsquo;s JIT compiler all improve
+over the first few runs.  A rising trend or high late-run variance
+would suggest sustained system load or thermal throttling.
+</p>
+
+{{ m.chart_tip(
+    "Hover over any point to see exact timing.  "
+    ~ "Click a legend entry to toggle that trace on or off.  "
+    ~ "Double-click a legend entry to isolate it."
+) }}
+{{ batch.chart | safe }}
+
+<p>
+The first batch completed in <strong>{{ batch.first_s }}&nbsp;s</strong>;
+the last in <strong>{{ batch.last_s }}&nbsp;s</strong>.  Across all
+{{ batch.n_batches }} batches the mean was <strong>{{ batch.mean_s }}&nbsp;s</strong>
+with a standard deviation of {{ batch.std_s }}&nbsp;s
+(CV&nbsp;=&nbsp;{{ batch.cv_pct }}%), indicating
+{{ batch.stability }} run-to-run performance.
+</p>
+
+{{ m.author_note(
+    "What do you notice about the batch-to-batch stability?  "
+    ~ "Were there any surprising warm-up effects or late-run drift?  "
+    ~ "Replace this with your observations."
+) }}
+</section>

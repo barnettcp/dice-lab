@@ -1,0 +1,49 @@
+{% import "macros.html" as m %}
+
+<section class="section" id="intro">
+<h2>1 &mdash; Welcome</h2>
+
+<p>
+Thanks for reading the <strong>DiceLab benchmark report</strong>.
+This is a cross-language experiment where I implemented the same
+dice-rolling simulation in five languages &mdash;
+<strong>C++</strong>, <strong>Go</strong>, <strong>Java</strong>,
+<strong>Python</strong>, and <strong>Rust</strong> &mdash; and then
+measured how they compare under identical workloads.
+</p>
+
+<p>The report is organised around three questions:</p>
+<ul>
+  <li>How do the five implementations compare at the same workload size?</li>
+  <li>How does each implementation scale as rolls grow from
+      100 to 1&nbsp;million?</li>
+  <li>How consistent (repeatable) is each language's timing
+      across many trials?</li>
+</ul>
+
+<p>
+Everything here is interactive.  Charts are powered by
+<a href="https://plotly.com/javascript/" target="_blank" rel="noopener">Plotly.js</a>,
+so you can hover for details, zoom into regions, and toggle traces on
+and off via the legend.  Several sections include dropdowns to switch
+between workloads or languages.  I&rsquo;ve also included my own
+commentary throughout &mdash; look for the blue &ldquo;Author&rsquo;s
+take&rdquo; boxes.
+</p>
+
+{{ m.author_note(
+    "Replace this placeholder with your personal introduction "
+    ~ "— why you built DiceLab, what you hoped to learn, and anything the "
+    ~ "reader should keep in mind while exploring the data."
+) }}
+
+<div class="disclaimer">
+  <strong>&#9888; A note on AI assistance.</strong>
+  The code that generated this report &mdash; data loading, chart
+  construction, and the HTML scaffolding &mdash; was written with the help
+  of an AI coding assistant (GitHub Copilot).  The benchmark data itself is
+  real, measured on my machine, and the interpretive prose is my own
+  (except where marked as a placeholder).  Think of the AI as a power tool:
+  I directed the design and reviewed every output.
+</div>
+</section>

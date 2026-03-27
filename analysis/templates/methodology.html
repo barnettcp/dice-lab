@@ -1,0 +1,67 @@
+{% import "macros.html" as m %}
+
+<section class="section" id="methodology">
+<h2>2 &mdash; Methodology</h2>
+
+<p>
+Understanding <em>how</em> the data was collected is just as important as
+the results themselves.  This section walks through the benchmark design,
+the tooling, and the analysis pipeline so you can judge the results on
+their merits.
+</p>
+
+<details class="collapsible" open>
+<summary>Benchmark design &amp; data pipeline</summary>
+<div class="details-body">
+
+<ol class="methodology-steps">
+  <li>
+    <strong>Implementation.</strong>  The same dice simulation was coded in
+    five languages (C++, Go, Java, Python, Rust), each following a shared
+    <a href="https://github.com" target="_blank" rel="noopener">functional
+    spec</a>.  Every implementation accepts the same CLI contract: number
+    of rolls, number of sides, and an optional seed.
+  </li>
+  <li>
+    <strong>Build configuration.</strong>  Compiled languages use optimised
+    release builds (e.g.&nbsp;<code>-O3</code> for C++,
+    <code>cargo build --release</code> for Rust).  Python runs on the
+    standard CPython interpreter with no special flags.
+  </li>
+  <li>
+    <strong>Benchmark execution.</strong>  The orchestrator
+    (<code>benchmarks/benchmark_runner.py</code>) runs
+    <strong>{{ meth.n_batches }} batch runs</strong>.  In each batch, every language
+    is exercised at {{ meth.n_workloads }} workload levels
+    (100, 1&nbsp;K, 10&nbsp;K, 100&nbsp;K, 1&nbsp;M rolls)
+    for <strong>{{ meth.trials_per }} trials</strong> each.  Timing captures only the
+    roll loop, excluding process start-up and I/O overhead where possible.
+  </li>
+  <li>
+    <strong>Raw output.</strong>  The runner writes a structured JSON report
+    to <code>benchmarks/results/benchmark_report.json</code> containing
+    per-trial timings, batch metadata, and environment info.
+  </li>
+  <li>
+    <strong>Analysis pipeline.</strong>  Running
+    <code>python analysis/run_analysis.py</code> normalises the JSON into
+    three canonical CSV tables under <code>shared-data/</code>:
+    <ul>
+      <li><strong>Run table</strong> &mdash; {{ meth.n_rows }} rows, one per timed
+          trial (the most granular view).</li>
+      <li><strong>Batch table</strong> &mdash; {{ meth.n_batches }} rows, one per
+          full benchmark batch.</li>
+      <li><strong>Workload summary</strong> &mdash; pre-aggregated mean,
+          median, std, min, max per (language, workload) pair.</li>
+    </ul>
+  </li>
+  <li>
+    <strong>Report generation.</strong>  This HTML report is built from those
+    CSVs by <code>python analysis/build_report.py</code>.  Charts are
+    Plotly figures; prose and stats are computed at build time.
+  </li>
+</ol>
+
+</div>
+</details>
+</section>

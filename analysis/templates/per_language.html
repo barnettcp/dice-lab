@@ -1,0 +1,61 @@
+{% import "macros.html" as m %}
+
+<section class="section" id="per-language">
+<h2>5 &mdash; Per-Language Scaling</h2>
+
+<p>
+The cross-language view in the previous section shows the <em>relative</em>
+picture across all languages at once.  This section zooms into each
+language individually, revealing the shape of its scaling curve and the
+distribution of individual trial times at each workload level.
+</p>
+
+{{ m.chart_tip(
+    "Select a language from the dropdown to load its charts.  "
+    ~ "Within each language, use the workload dropdown to see "
+    ~ "individual trial-time histograms.  Hover for exact values."
+) }}
+{{ m.dropdown("Select language:", "lang-select", "lang", per_lang.language_options) }}
+
+{% for lang in per_lang.languages %}
+<div id="lang-{{ lang.key }}" class="chart-panel{{ ' active' if loop.first else '' }}">
+
+  <h3>
+    <span class="lang-dot" style="background:{{ lang.color }}"></span>
+    {{ lang.display }}
+  </h3>
+
+  {{ m.insight_row(lang.cards) }}
+
+  <h4>Scaling Curve</h4>
+  <p>
+    The line below shows how mean elapsed time changes as the workload grows.
+    Error bars are &plusmn;1 standard deviation across all trials at that level.
+    A nearly flat line indicates sub-linear scaling &mdash; the fixed overhead
+    dominates timing at most workload sizes.
+  </p>
+  {{ lang.scale_chart | safe }}
+
+  <h4>Trial Distribution by Workload</h4>
+  <p>
+    Select a workload below to examine the histogram of individual trial
+    times.  A tight, symmetric histogram indicates stable timing.
+    A long right tail implies occasional outlier runs &mdash; likely from OS
+    scheduling preemptions or, in Java&rsquo;s case, JIT compilation events.
+  </p>
+  {{ m.dropdown("Select workload:", lang.key ~ "-hist-select",
+                lang.key ~ "-hist", per_lang.workload_options) }}
+  {% for wl in per_lang.workloads %}
+  <div id="{{ lang.key }}-hist-{{ wl }}" class="chart-panel{{ ' active' if loop.first else '' }}">
+    {{ lang.hist_charts[wl] | safe }}
+  </div>
+  {% endfor %}
+
+  {{ m.author_note(
+      "What surprised you about " ~ lang.display ~ "'s performance profile?  "
+      ~ "Replace this with your observations about " ~ lang.display ~ "."
+  ) }}
+
+</div>
+{% endfor %}
+</section>
