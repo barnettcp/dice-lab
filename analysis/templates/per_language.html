@@ -27,12 +27,13 @@ distribution of individual trial times at each workload level.
 
   {{ m.insight_row(lang.cards) }}
 
-  <h4>Scaling Curve</h4>
+  <h4>Workload Distribution Ridgeline</h4>
   <p>
-    The line below shows how mean elapsed time changes as the workload grows.
-    Error bars are &plusmn;1 standard deviation across all trials at that level.
-    A nearly flat line indicates sub-linear scaling &mdash; the fixed overhead
-    dominates timing at most workload sizes.
+    Each ridge below shows the full timing distribution (KDE) at a given
+    workload level, with the largest workload (1&nbsp;M rolls) at the bottom.
+    A dot on each baseline marks the mean.  Hover anywhere on a ridge for
+    summary statistics (mean, std, CV).  Distributions that narrow and shift
+    left as workloads decrease indicate stable, predictable scaling.
   </p>
   {{ lang.scale_chart | safe }}
 

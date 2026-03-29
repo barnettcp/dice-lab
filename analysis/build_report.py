@@ -62,6 +62,7 @@ from analyze_tables import (  # noqa: E402 — must follow sys.path insertion
     plot_mean_time_by_workload,
     plot_mean_vs_cv_all,
     plot_ridgeline,
+    plot_ridgeline_by_workload,
     plot_scaling_within_language,
     plot_trial_histogram_within_language,
 )
@@ -297,7 +298,7 @@ def _build_per_language_context(run_table, workload_summary) -> dict:
         )
         avg_cv = lang_ws["cv_pct"].mean() if "cv_pct" in lang_ws.columns else 0
 
-        scale_chart = _fig_to_html(plot_scaling_within_language(run_table, lang))
+        scale_chart = _fig_to_html(plot_ridgeline_by_workload(run_table, lang))
 
         hist_charts = {}
         for rolls in WORKLOADS:

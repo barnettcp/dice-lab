@@ -1210,3 +1210,168 @@ def plot_boxwhisker_by_workload(
         legend_title="Language",
     )
     return fig
+
+
+def plot_ridgeline_by_workload(
+    run_table: pd.DataFrame,
+    language: str,
+    overlap: float = 0.65,
+    baseline_alpha: float = 0.20,
+) -> go.Figure:
+    """Ridgeline plot of elapsed time KDEs per workload level for one language.
+
+    Each ridge represents one workload size.  The largest workload (1 M rolls)
+    sits at the bottom of the chart — it has the widest distribution and acts
+    as the visual anchor — with smaller workloads stacked upward.  This makes
+    the scaling story immediately legible: distributions narrow and shift left
+    as you move up the y-axis.
+
+    Fill opacity is graduated: the bottom (1 M) ridge uses the full language
+    colour; upper ridges fade to a lighter tint.  This reinforces the ordering
+    without introducing a foreign colour palette.
+
+    A small dot on each ridge's baseline marks the mean elapsed time for that
+    workload, providing a quick visual comparison across rows.
+
+    Args:
+        run_table: Per-trial DataFrame from :func:`load_run_table`.
+        language: Language identifier to plot (e.g. ``"python"``).
+        overlap: Controls peak bleed-through into the row above.
+            0 = fully separated rows, 1 = all baselines coincide.
+            Values around 0.55–0.70 work well.
+        baseline_alpha: Opacity of per-workload baseline reference lines.
+
+    Returns:
+        Plotly ridgeline figure.
+    """
+    subset = run_table[run_table["language"] == language].copy()
+    color   = LANGUAGE_COLORS.get(language, "#888888")
+    display = LANGUAGE_DISPLAY.get(language, language)
+
+    # ── Compute KDE and summary stats for each workload ──────────────────────
+    kdes: dict[int, tuple] = {}
+    stats: dict[int, tuple[float, float, float]] = {}
+    for rolls in WORKLOADS:
+        data = subset[subset["rolls"] == rolls]["elapsed_ms"].dropna()
+        if len(data) < 2:
+            continue
+        kde = gaussian_kde(data)
+        x_grid = np.linspace(data.min(), data.max(), 400)
+        kdes[rolls] = (x_grid, kde(x_grid))
+        wk_mean = float(data.mean())
+        wk_std = float(data.std())
+        wk_cv = wk_std / wk_mean if wk_mean != 0 else 0.0
+        stats[rolls] = (wk_mean, wk_std, wk_cv)
+
+    if not kdes:
+        fig = go.Figure()
+        fig.update_layout(title=f"No data for {display}")
+        return fig
+
+    max_kde_height = max(y.max() for _, y in kdes.values())
+    spacing = max_kde_height * (1.0 - overlap)
+
+    all_x = np.concatenate([x for x, _ in kdes.values()])
+    x_min, x_max = float(all_x.min()), float(all_x.max())
+
+    # ── Workload ordering: 1 M at bottom (idx=0), 100 at top ────────────────
+    bottom_to_top = list(reversed(WORKLOADS))  # [1M, 100K, 10K, 1K, 100]
+
+    # Graduated fill opacity: bottom ridge (1M, i=0) is most opaque → top fades
+    n = len(bottom_to_top)
+    fill_alpha_map = {
+        rolls: 0.55 - 0.25 * (i / max(n - 1, 1))
+        for i, rolls in enumerate(bottom_to_top)
+    }
+
+    fig = go.Figure()
+
+    # Draw from top to bottom so the bottom (largest) ridge renders in front
+    for workload in WORKLOADS:  # 100 → 1M; 1M is drawn last = visually front
+        if workload not in kdes:
+            continue
+
+        idx      = bottom_to_top.index(workload)
+        baseline = idx * spacing
+        x_grid, y_kde = kdes[workload]
+        label    = WORKLOAD_LABELS[workload]
+        fill_alpha = fill_alpha_map[workload]
+        wk_mean, wk_std, wk_cv = stats[workload]
+
+        # Per-workload baseline reference line
+        fig.add_trace(go.Scatter(
+            x=[x_min, x_max],
+            y=[baseline, baseline],
+            mode="lines",
+            line=dict(color=hex_to_rgba(color, alpha=baseline_alpha), width=1),
+            showlegend=False,
+            hoverinfo="skip",
+        ))
+
+        # Closed polygon for fill='tonexty'
+        x_poly = np.concatenate([[x_grid[0]], x_grid, [x_grid[-1]]])
+        y_base  = np.full(len(x_poly), baseline)
+        y_top   = np.concatenate([[baseline], y_kde + baseline, [baseline]])
+
+        # Broadcast summary stats to every polygon point so hover shows them
+        n_pts = len(x_poly)
+        cdata = np.column_stack([
+            np.full(n_pts, wk_mean),
+            np.full(n_pts, wk_std),
+            np.full(n_pts, wk_cv),
+        ])
+
+        # Invisible lower anchor required by fill='tonexty'
+        fig.add_trace(go.Scatter(
+            x=x_poly, y=y_base,
+            mode="lines",
+            line=dict(color="rgba(0,0,0,0)", width=0),
+            showlegend=False,
+            hoverinfo="skip",
+        ))
+
+        # KDE ridge filled down to the anchor
+        fig.add_trace(go.Scatter(
+            x=x_poly, y=y_top,
+            mode="lines",
+            fill="tonexty",
+            fillcolor=hex_to_rgba(color, alpha=fill_alpha),
+            line=dict(color=color, width=2),
+            name=label,
+            showlegend=True,
+            customdata=cdata,
+            hovertemplate=(
+                f"<b>{display}: {label} rolls</b><br>"
+                "Mean: %{customdata[0]:.4f} ms<br>"
+                "Std: %{customdata[1]:.4f} ms<br>"
+                "CV: %{customdata[2]:.4f}"
+                "<extra></extra>"
+            ),
+        ))
+
+        # Mean marker on the baseline for quick visual comparison
+        fig.add_trace(go.Scatter(
+            x=[wk_mean],
+            y=[baseline],
+            mode="markers",
+            marker=dict(color=color, size=8, symbol="circle",
+                        line=dict(width=1, color="white")),
+            showlegend=False,
+            hoverinfo="skip",
+        ))
+
+    active = [w for w in bottom_to_top if w in kdes]
+    fig.update_layout(
+        title=f"Elapsed Time Distribution by Workload — {display}",
+        xaxis_title="Elapsed Time (ms)",
+        yaxis=dict(
+            tickvals=[bottom_to_top.index(w) * spacing for w in active],
+            ticktext=[WORKLOAD_LABELS[w] for w in active],
+            showgrid=False,
+            zeroline=False,
+        ),
+        legend_title="Workload (rolls)",
+        template="plotly_white",
+        hovermode="closest",
+    )
+    return fig
