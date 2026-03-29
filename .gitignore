@@ -53,6 +53,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Author notes (personal commentary, not committed)
+analysis/author_notes.yaml
+
 # Ignore shared-data generated files
 shared-data/*.csv
 shared-data/*.tsv

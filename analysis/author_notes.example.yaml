@@ -1,0 +1,40 @@
+# Author's notes for the DiceLab benchmark report.
+#
+# Copy this file to author_notes.yaml and fill in your own observations.
+# author_notes.yaml is .gitignore'd so your personal commentary stays local.
+#
+# Any key left blank (or the whole file missing) will render the default
+# placeholder text in the report.
+
+intro: >
+  Replace this with your personal introduction — why you built DiceLab,
+  what you hoped to learn, and anything the reader should keep in mind
+  while exploring the data.
+
+batch: >
+  What do you notice about the batch-to-batch stability?  Were there any
+  surprising warm-up effects or late-run drift?  Replace this with your
+  observations.
+
+cross_language: >
+  What stands out to you in the cross-language comparison?  Is the Python
+  scaling surprise expected?  How do the compiled languages compare among
+  themselves?  Replace this with your analysis.
+
+# Per-language notes keyed by the language identifier.
+per_language:
+  cpp: >
+    What surprised you about C++'s performance profile?
+    Replace this with your observations about C++.
+  go: >
+    What surprised you about Go's performance profile?
+    Replace this with your observations about Go.
+  java: >
+    What surprised you about Java's performance profile?
+    Replace this with your observations about Java.
+  python: >
+    What surprised you about Python's performance profile?
+    Replace this with your observations about Python.
+  rust: >
+    What surprised you about Rust's performance profile?
+    Replace this with your observations about Rust.

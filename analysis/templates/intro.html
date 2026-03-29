@@ -32,9 +32,11 @@ take&rdquo; boxes.
 </p>
 
 {{ m.author_note(
-    "Replace this placeholder with your personal introduction "
-    ~ "— why you built DiceLab, what you hoped to learn, and anything the "
-    ~ "reader should keep in mind while exploring the data."
+    notes.intro | default(
+        "Replace this placeholder with your personal introduction "
+        ~ "— why you built DiceLab, what you hoped to learn, and anything the "
+        ~ "reader should keep in mind while exploring the data."
+    )
 ) }}
 
 <div class="disclaimer">

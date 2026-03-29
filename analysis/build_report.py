@@ -40,6 +40,7 @@ import sys
 from pathlib import Path
 
 import jinja2
+import yaml
 
 # ---------------------------------------------------------------------------
 # Path wiring
@@ -349,6 +350,15 @@ def build_report(
     batch_table = load_batch_table(shared_data_dir)
     workload_summary = load_workload_summary(shared_data_dir)
 
+    # Author notes — loaded from a local, git-ignored YAML file.
+    # Falls back to empty dict when the file doesn't exist, so templates
+    # render their built-in placeholder text.
+    notes_path = Path(__file__).resolve().parent / "author_notes.yaml"
+    if notes_path.exists():
+        notes = yaml.safe_load(notes_path.read_text(encoding="utf-8")) or {}
+    else:
+        notes = {}
+
     print("[build_report] Loading assets \u2026")
     css = _load_asset("report.css")
     js = _load_asset("report.js")
@@ -362,6 +372,7 @@ def build_report(
         "plotly_cdn": _PLOTLY_CDN,
         "css": css,
         "js": js,
+        "notes": notes,
         "meth": _build_methodology_context(batch_table, run_table),
         "batch": _build_batch_context(batch_table, run_table),
         "cross": _build_cross_language_context(workload_summary, run_table),

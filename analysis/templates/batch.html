@@ -39,8 +39,10 @@ with a standard deviation of {{ batch.std_s }}&nbsp;s
 </p>
 
 {{ m.author_note(
-    "What do you notice about the batch-to-batch stability?  "
-    ~ "Were there any surprising warm-up effects or late-run drift?  "
-    ~ "Replace this with your observations."
+    notes.batch | default(
+        "What do you notice about the batch-to-batch stability?  "
+        ~ "Were there any surprising warm-up effects or late-run drift?  "
+        ~ "Replace this with your observations."
+    )
 ) }}
 </section>

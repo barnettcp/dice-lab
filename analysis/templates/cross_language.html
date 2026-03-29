@@ -94,9 +94,11 @@ variability, or memory-pressure effects at that workload level.
 {{ cross.cv_chart | safe }}
 
 {{ m.author_note(
-    "What stands out to you in the cross-language comparison?  "
-    ~ "Is the Python scaling surprise expected?  How do the compiled "
-    ~ "languages compare among themselves?  Replace this with your analysis."
+    notes.cross_language | default(
+        "What stands out to you in the cross-language comparison?  "
+        ~ "Is the Python scaling surprise expected?  How do the compiled "
+        ~ "languages compare among themselves?  Replace this with your analysis."
+    )
 ) }}
 
 <h3>Summary Statistics</h3>

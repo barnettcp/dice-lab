@@ -53,8 +53,10 @@ distribution of individual trial times at each workload level.
   {% endfor %}
 
   {{ m.author_note(
-      "What surprised you about " ~ lang.display ~ "'s performance profile?  "
-      ~ "Replace this with your observations about " ~ lang.display ~ "."
+      notes.per_language[lang.key] | default(
+          "What surprised you about " ~ lang.display ~ "'s performance profile?  "
+          ~ "Replace this with your observations about " ~ lang.display ~ "."
+      )
   ) }}
 
 </div>
