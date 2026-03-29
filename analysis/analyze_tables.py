@@ -302,11 +302,14 @@ def plot_trial_histogram_within_language(
     language: str,
     rolls: int,
 ) -> go.Figure:
-    """Histogram of individual trial times for one language at one workload level.
+    """Histogram + KDE + rug plot of individual trial times for one language at one workload level.
 
     Useful for inspecting the *shape* of the timing distribution at a specific
     (language, roll count) combination — whether it is symmetric, right-skewed
     from occasional OS interruptions, or bimodal from JIT warm-up effects.
+    The KDE overlay smooths the histogram into a continuous density curve, and
+    the rug plot along the x-axis shows every individual trial as a thin tick
+    mark, making sparse regions and clusters visible beneath the bins.
 
     Call this once per workload level of interest to build a set of
     distribution snapshots for the language under review.
@@ -325,19 +328,69 @@ def plot_trial_histogram_within_language(
 
     color = LANGUAGE_COLORS.get(language, "#888888")
     label = WORKLOAD_LABELS.get(rolls, str(rolls))
+    display = LANGUAGE_DISPLAY.get(language, language)
+    data = subset["elapsed_ms"].dropna()
 
-    fig = px.histogram(
-        subset,
-        x="elapsed_ms",
-        nbins=20,
-        title=f"Trial Time Distribution — {LANGUAGE_DISPLAY.get(language, language)} at {label} rolls",
-        color_discrete_sequence=[color],
-        template="plotly_white",
-    )
+    fig = go.Figure()
+
+    # Manual binning so hover can show count + % while bars stay density-scaled
+    counts, bin_edges = np.histogram(data, bins=20)
+    bin_width = bin_edges[1] - bin_edges[0]
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    total = counts.sum()
+    density = counts / (total * bin_width)
+    pct = counts / total * 100
+
+    fig.add_trace(go.Bar(
+        x=bin_centers,
+        y=density,
+        width=bin_width,
+        name="Trials",
+        marker_color=color,
+        opacity=0.65,
+        customdata=np.column_stack([counts, pct]),
+        hovertemplate=(
+            "Bin: %{x:.4f} ms<br>"
+            "Record Count: %{customdata[0]:.0f}<br>"
+            "Pct of Total: %{customdata[1]:.1f}%<extra></extra>"
+        ),
+    ))
+
+    if len(data) > 1:
+        kde = gaussian_kde(data)
+        x_grid = np.linspace(data.min(), data.max(), 300)
+        fig.add_trace(go.Scatter(
+            x=x_grid,
+            y=kde(x_grid),
+            mode="lines",
+            name="KDE",
+            line=dict(color=color, width=2.5),
+            hovertemplate="Time: %{x:.4f} ms<br>Density: %{y:.4f}<extra></extra>",
+        ))
+
+    # Rug plot: thin tick marks along the x-axis for every trial
+    fig.add_trace(go.Scatter(
+        x=data,
+        y=np.zeros(len(data)),
+        mode="markers",
+        name="Rug",
+        marker=dict(
+            symbol="line-ns",
+            size=8,
+            color=color,
+            opacity=0.4,
+            line=dict(width=1, color=color),
+        ),
+        hovertemplate="Time: %{x:.4f} ms<extra></extra>",
+    ))
+
     fig.update_layout(
+        title=f"Trial Time Distribution — {display} at {label} rolls",
         xaxis_title="Elapsed time (ms)",
-        yaxis_title="Trial count",
+        yaxis_title="Density",
         bargap=0.05,
+        template="plotly_white",
+        showlegend=True,
     )
     return fig
 
