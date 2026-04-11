@@ -1,13 +1,13 @@
 {% import "macros.html" as m %}
 
 <section class="section" id="methodology">
-<h2>2 &mdash; Methodology</h2>
+<h2>2. Methodology</h2>
 
 <p>
 Understanding <em>how</em> the data was collected is just as important as
 the results themselves.  This section walks through the benchmark design,
 the tooling, and the analysis pipeline so you can judge the results on
-their merits.
+their merits. 
 </p>
 
 <details class="collapsible" open>
@@ -64,4 +64,11 @@ their merits.
 
 </div>
 </details>
+
+{{ m.author_note(
+    notes.methodology | default(
+        "Replace this placeholder with your goals and thoughts about the design of this project."
+    )
+) }}
+
 </section>

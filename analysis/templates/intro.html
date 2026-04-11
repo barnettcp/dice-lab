@@ -1,15 +1,26 @@
 {% import "macros.html" as m %}
 
 <section class="section" id="intro">
-<h2>1 &mdash; Welcome</h2>
+<h2>1. Welcome</h2>
 
 <p>
-Thanks for reading the <strong>DiceLab benchmark report</strong>.
-This is a cross-language experiment where I implemented the same
-dice-rolling simulation in five languages &mdash;
-<strong>C++</strong>, <strong>Go</strong>, <strong>Java</strong>,
-<strong>Python</strong>, and <strong>Rust</strong> &mdash; and then
-measured how they compare under identical workloads.
+Thank you for reading the <strong>DiceLab benchmark report</strong>.
+This is a cross-language experiment where the same
+dice-rolling simulation is implemented in five languages:
+<ul>
+  <li><strong>C++</strong></li>
+  <li><strong>Go</strong></li>
+  <li><strong>Java</strong></li>
+  <li><strong>Python</strong></li>
+  <li><strong>Rust</strong></li>
+</ul>
+<p>
+
+Each language was tasked to run several sized workloads (number of 6-sided dice rolls per simulation),
+and data was stored to measure how fast my home computer could run each implementation.
+The initial implementation does not include containerization, but I plan to explore Docker in the future for
+others to run and compare against these results. Other languages may also be implemented in the future.
+
 </p>
 
 <p>The report is organised around three questions:</p>
@@ -28,7 +39,8 @@ so you can hover for details, zoom into regions, and toggle traces on
 and off via the legend.  Several sections include dropdowns to switch
 between workloads or languages.  I&rsquo;ve also included my own
 commentary throughout &mdash; look for the blue &ldquo;Author&rsquo;s
-take&rdquo; boxes.
+take&rdquo; boxes. The a code that generates this report is available to explore on my 
+<a href="https://github.com/barnettcp/dice-lab" target="_blank" rel="noopener">GitHub</a>.
 </p>
 
 {{ m.author_note(
@@ -41,11 +53,14 @@ take&rdquo; boxes.
 
 <div class="disclaimer">
   <strong>&#9888; A note on AI assistance.</strong>
-  The code that generated this report &mdash; data loading, chart
-  construction, and the HTML scaffolding &mdash; was written with the help
-  of an AI coding assistant (GitHub Copilot).  The benchmark data itself is
-  real, measured on my machine, and the interpretive prose is my own
-  (except where marked as a placeholder).  Think of the AI as a power tool:
-  I directed the design and reviewed every output.
+  The code that generated this report and much of this project (implementations, documentation, 
+  data capture, data analysis, and presentation) was written with the help
+  of an AI coding assistant (GitHub Copilot inside of VS Code). Much of the verbiage was edited by
+  me personally, but was originally placed there using Github Copilot.
+  The benchmark data itself is real, measured on my machine, and the interpretive prose is my own
+  (except where marked as a placeholder). I could not have done this in the same amount of time
+  without the use of AI, but this project was assembled at my thoughtful direction. This kind of 
+  development is a personal and professional learning goal, and the intent is to create software 
+  that is neatly implemented, well documented, and presented in an engaging fashion. 
 </div>
 </section>

@@ -38,3 +38,7 @@ per_language:
   rust: >
     What surprised you about Rust's performance profile?
     Replace this with your observations about Rust.
+
+
+methodology:
+  Replace this placeholder with your goals and thoughts about the design of this project.
