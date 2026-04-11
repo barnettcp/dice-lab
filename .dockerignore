@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Rust build cache (large — rebuilt inside container)
+implementations/rust/target
+
+# Java compiled output (rebuilt inside container)
+implementations/java/out
+
+# Go binary (rebuilt inside container)
+implementations/go/dice-lab
+implementations/go/dice-lab.exe
+
+# C++ binary (rebuilt inside container)
+implementations/cpp/dice-lab
+implementations/cpp/dice-lab.exe
+
+# Python caches
+__pycache__
+*.pyc
+*.pyo
+
+# Generated outputs (rebuilt inside container)
+shared-data/*.csv
+shared-data/*.tsv
+shared-data/*.json
+reports/*.md
+reports/*.html
+benchmarks/results/*.json
+benchmarks/results/*.csv
+
+# IDE / OS
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# Notebooks / sandbox
+*.ipynb
