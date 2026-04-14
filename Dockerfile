@@ -82,15 +82,21 @@ COPY benchmarks/ benchmarks/
 
 # Analysis pipeline + templates + assets
 COPY analysis/ analysis/
-COPY reports/assets/ reports/assets/
+
+# Store report assets in a separate location so they survive volume mounts
+# on /app/reports.  The CMD copies them into place before the pipeline runs.
+COPY reports/assets/ /opt/dice-lab-assets/
 
 # Ensure output directories exist
 RUN mkdir -p shared-data reports benchmarks/results
 
 # --- Default entry point ---------------------------------------------------
-# Runs the full pipeline: benchmark all languages, then produce the report.
+# 1. Restore report assets into the (possibly mounted) reports directory.
+# 2. Run benchmarks across all languages.
+# 3. Run the analysis pipeline to produce CSVs and the HTML report.
 CMD ["sh", "-c", "\
-  python benchmarks/benchmark_runner.py \
+  cp -r /opt/dice-lab-assets reports/assets \
+  && python benchmarks/benchmark_runner.py \
     --languages python cpp rust go java \
     --output benchmarks/results/benchmark_report.json \
   && python analysis/run_analytic_pipeline.py \

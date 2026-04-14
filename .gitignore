@@ -65,6 +65,9 @@ shared-data/*.json
 reports/*.md
 reports/*.html
 
+# Ignore Docker output files
+docker-output/
+
 
 # Itnore Jupyter Notebooks, used for prototyping and exploration, but not intended for version control
 *.ipynb

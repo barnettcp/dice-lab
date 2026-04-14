@@ -76,8 +76,10 @@ _REPORT_TITLE = "DiceLab Benchmark Report"
 
 # Plotly is injected once via CDN in the <head>; all fig.to_html() calls use
 # include_plotlyjs=False so the library never appears a second time.
+# Pinned to 3.5.0 — Plotly Python 6.x serializes data using the bdata
+# (binary typed-array) format which requires Plotly.js >= 3.0 to decode.
 _PLOTLY_CDN = (
-    '<script src="https://cdn.plot.ly/plotly-latest.min.js"'
+    '<script src="https://cdn.plot.ly/plotly-3.5.0.min.js"'
     ' charset="utf-8"></script>'
 )
 
