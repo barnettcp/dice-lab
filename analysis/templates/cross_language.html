@@ -1,12 +1,12 @@
 {% import "macros.html" as m %}
 
 <section class="section" id="cross-language">
-<h2>4 &mdash; Cross-Language Comparison</h2>
+<h2>4. Cross-Language Comparison</h2>
 
 <p>
-This section compares all five languages directly.  We start with the
-broadest view &mdash; how mean execution time evolves across the full workload
-range &mdash; before zooming into individual workload snapshots, distribution
+This section compares all five languages directly. We start with the
+broadest view: how mean execution time evolves across the full workload
+range, before we zoom into individual workload snapshots, distribution
 shapes, and dimensionless consistency metrics.
 </p>
 
@@ -15,24 +15,27 @@ shapes, and dimensionless consistency metrics.
 <h3>Scaling Trend</h3>
 <p>
 The chart below places all five languages on the same log-scaled x-axis,
-with a shaded &plusmn;1 standard deviation band around each line.  A narrower
+with a shaded &plusmn;1 standard deviation band around each line. A narrower
 band indicates more consistent timing across repeated trials.
 Lines running <em>parallel</em> imply each language shares the same scaling
-exponent.  A line that diverges upward signals worse asymptotic behaviour
-at large inputs &mdash; most visible for Python at the 1&nbsp;M-roll level.
+exponent. A line that diverges upward signals worse asymptotic behaviour
+at large inputs; this is most visible for Python at the 1&nbsp;M-roll level.
 </p>
 
 {{ m.chart_tip(
     "Click any language name in the legend to hide/show its line.  "
     ~ "Double-click to isolate one language.  Drag to zoom into a region; "
-    ~ "double-click the chart background to reset."
+    ~ "double-click the chart background to reset. The scale of some languages, "
+    ~ "especially Python and Java, may cause the scaling for faster language to appear "
+    ~ "flat at the bottom of the chart. Removing these languages reveals more visual detail about "
+    ~ "the scaling of the faster languages."
 ) }}
 {{ cross.scaling_chart | safe }}
 
 <h3>Per-Workload Snapshot</h3>
 <p>
 Use the dropdown to inspect magnitude comparisons at a single fixed
-workload.  Bars are sorted by mean execution time in ascending order.
+workload. Bars are sorted by mean execution time in ascending order.
 Error bars show &plusmn;1 standard deviation across all trials.
 </p>
 
@@ -51,9 +54,9 @@ Error bars show &plusmn;1 standard deviation across all trials.
 <p>
 The scatter plot below maps each (language, workload) combination onto
 two axes: mean execution time on the x-axis and coefficient of variation
-(CV&nbsp;=&nbsp;std&nbsp;/&nbsp;mean) on the y-axis.  Marker size encodes
+(CV&nbsp;=&nbsp;std&nbsp;/&nbsp;mean) on the y-axis. Marker size encodes
 workload level.  Points in the <em>bottom-left</em> corner are both fast
-and consistent &mdash; the ideal outcome.
+and consistent: the ideal outcome.
 </p>
 
 {{ cross.cv_scatter_chart | safe }}
@@ -61,8 +64,8 @@ and consistent &mdash; the ideal outcome.
 <h3>Trial Time Distribution (Ridgeline)</h3>
 <p>
 The ridgeline plot stacks KDE curves for each language vertically so
-distribution shapes can be compared at a glance.  Use the dropdown to
-switch between workload levels.  A narrow, symmetric ridge indicates
+distribution shapes can be compared at a glance. Use the dropdown to
+switch between workload levels. A narrow, symmetric ridge indicates
 stable timing; a wide or skewed ridge suggests variability.
 </p>
 
@@ -80,15 +83,18 @@ stable timing; a wide or skewed ridge suggests variability.
 <h3>Timing Consistency (Coefficient of Variation)</h3>
 <p>
 Raw standard deviation cannot be fairly compared between a language timing
-at ~12&nbsp;ms (Rust) and one at ~65&nbsp;ms (Python) &mdash; the absolute
-spread naturally differs.  The <strong>coefficient of variation</strong>
+at (e.g.) ~1.2&nbsp;ms (Rust) and one at ~62&nbsp;ms (Python): the absolute
+spread naturally differs. The <strong>coefficient of variation</strong>
 (CV&nbsp;=&nbsp;std&nbsp;/&nbsp;mean&nbsp;&times;&nbsp;100&nbsp;%) normalises
-spread relative to the mean, making consistency directly comparable.
+variation relative to the mean, making consistency directly comparable across languages.
 </p>
 <p>
-A flat, low CV indicates reliable timing.  A high or climbing CV suggests
+A flat, low CV indicates reliable timing. A high or climbing CV suggests
 the language is susceptible to OS scheduling jitter, JIT warm-up
-variability, or memory-pressure effects at that workload level.
+variability, or memory-pressure effects at that workload level. Practically speaking, 
+for this simulation these timing differences and inconsistencies are not significant. 
+However, the practice of analyzing consistency is important for understanding a language's
+performance profile and how it may behave in production under less trivial loads.
 </p>
 
 {{ cross.cv_chart | safe }}
@@ -104,7 +110,7 @@ variability, or memory-pressure effects at that workload level.
 <h3>Summary Statistics</h3>
 <p>
 The full table of descriptive statistics for every (language, workload)
-combination is available below.  Expand it for the raw numbers behind the
+combination is available below. Expand it for the raw numbers behind the
 charts above.
 </p>
 

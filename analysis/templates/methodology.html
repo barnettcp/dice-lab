@@ -7,7 +7,10 @@
 Understanding <em>how</em> the data was collected is just as important as
 the results themselves.  This section walks through the benchmark design,
 the tooling, and the analysis pipeline so you can judge the results on
-their merits. 
+their merits. The data that is being collected is quite simple, but the
+process of cleanly capturing it, structuring it, analyzing it, and presenting
+it is complex. As a project's data increases in complexity, understanding these
+downstream steps become critical to a successful analysis.
 </p>
 
 <details class="collapsible" open>
@@ -18,7 +21,7 @@ their merits.
   <li>
     <strong>Implementation.</strong>  The same dice simulation was coded in
     five languages (C++, Go, Java, Python, Rust), each following a shared
-    <a href="https://github.com" target="_blank" rel="noopener">functional
+    <a href="https://github.com/barnettcp/dice-lab/blob/main/spec/functional_spec.md" target="_blank" rel="noopener">functional
     spec</a>.  Every implementation accepts the same CLI contract: number
     of rolls, number of sides, and an optional seed.
   </li>

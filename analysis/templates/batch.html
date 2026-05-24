@@ -1,14 +1,15 @@
 {% import "macros.html" as m %}
 
 <section class="section" id="batch-timing">
-<h2>3 &mdash; Batch Timing Overview</h2>
+<h2>3. Batch Timing Overview</h2>
 
 <p>
 Before examining individual languages, let&rsquo;s look at how long
 each <em>complete</em> benchmark batch took end-to-end.  Each batch
 exercises all {{ batch.n_languages }} languages across all {{ batch.n_workloads }} workload levels
-for {{ batch.trials_per }} trials each &mdash;
-so a single batch applies <strong>{{ batch.execs_per_batch }} timed executions</strong>.
+for {{ batch.trials_per }} trials each,
+so a single batch applies <strong>{{ batch.execs_per_batch }} timed executions</strong> of varying
+workload sizes.
 </p>
 
 {{ m.insight_row(batch.cards) }}
@@ -18,7 +19,7 @@ The chart below plots total batch elapsed time against batch run index.
 A downward trend at the start is the expected signature of warm-up
 effects: the OS&rsquo;s branch predictor, file-system cache, and &mdash;
 in Java&rsquo;s case &mdash; the JVM&rsquo;s JIT compiler all improve
-over the first few runs.  A rising trend or high late-run variance
+over the first few runs. A rising trend or high late-run variance
 would suggest sustained system load or thermal throttling.
 </p>
 
