@@ -45,12 +45,55 @@ Each implementation is expected to:
 This repo is source-first.
 
 - Binaries/executables (for example `.exe`) are intentionally ignored in git.
-- Build artifacts should be generated locally by each user.
+- Build artifacts should be generated locally by each user, or produced inside the Docker image.
 - If distributing binaries later, publish them via Releases rather than committing them to source history.
 
 This keeps the repository clean, portable, and collaboration-friendly.
 
-## Running Implementations
+## Running the Full Pipeline with Docker (Recommended)
+
+The [Dockerfile](Dockerfile) is a multi-stage build that compiles all five language implementations and packages them with the Python benchmark runner and analysis pipeline into a single image.  This is the easiest way to reproduce results without installing each language toolchain locally.
+
+### Build the image
+
+```bash
+docker build -t dice-lab .
+```
+
+### Run the full pipeline
+
+The default `CMD` runs benchmarks across all languages and then produces the complete analysis outputs.  Mount the standard output directories to retrieve generated files on the host:
+
+```bash
+docker run --rm \
+  -v "$(pwd)/reports:/app/reports" \
+  -v "$(pwd)/shared-data:/app/shared-data" \
+  -v "$(pwd)/benchmarks/results:/app/benchmarks/results" \
+  dice-lab
+```
+
+On Windows (Command Prompt):
+
+```cmd
+docker run --rm ^
+  -v "%cd%/reports:/app/reports" ^
+  -v "%cd%/shared-data:/app/shared-data" ^
+  -v "%cd%/benchmarks/results:/app/benchmarks/results" ^
+  dice-lab
+```
+
+Primary outputs written to your local repo:
+
+- `benchmarks/results/benchmark_report.json`
+- `shared-data/analysis_run_table.csv`
+- `shared-data/analysis_batch_table.csv`
+- `shared-data/analysis_language_workload_summary.csv`
+- `reports/analysis_summary.md`
+- `reports/benchmark_report.html`
+
+> These output files are `.gitignore`d by default.  Commit curated snapshots intentionally if needed.
+
+## Running Locally (Without Docker)
 
 Run each implementation from its own folder and follow that folder's README for exact commands:
 
@@ -88,26 +131,41 @@ Optional controls:
 - `--sides <int>` for side count (default benchmark baseline is 6)
 - `--output <path>` for report destination
 
-Notes:
+### Local Build Requirements
 
-- C++ binary must be built first (from `implementations/cpp`):
+All compiled implementations must be built before running the benchmark runner locally.  The Docker image handles this automatically.
+
+- C++ (from `implementations/cpp`):
 	- `g++ -std=c++17 -O3 -o dice-lab src/main.cpp src/Dice.cpp`
-- Rust release binary must be built first (from `implementations/rust`):
+- Rust (from `implementations/rust`):
 	- `cargo build --release`
-- Go binary must be built first (from `implementations/go`):
+- Go (from `implementations/go`):
 	- `go build -o dice-lab .`
-- Java classes must be compiled to `implementations/java/out` first:
+- Java (from repo root):
 	- `mkdir -p implementations/java/out`
 	- `javac -d implementations/java/out implementations/java/src/DiceLab.java`
-- Benchmark timing excludes compile time (compile separately).
+
+Benchmark timing excludes compile time — compile separately before running.
 
 ## Analysis Model (Pandas First)
 
-First-pass analysis is implemented in [analysis](analysis) and follows [spec/analysis_spec.md](spec/analysis_spec.md).
+Analysis is implemented in [analysis](analysis) and follows [spec/analysis_spec.md](spec/analysis_spec.md).
 
-Run from repo root:
+The recommended entry point is the pipeline orchestrator, which runs both stages in sequence (CSV exports → HTML report):
 
-- `python analysis/run_analysis.py`
+```bash
+python analysis/run_analytic_pipeline.py
+```
+
+Individual stages can also be run separately:
+
+```bash
+# Stage 1 only: build CSVs and markdown summary
+python analysis/run_analysis.py
+
+# Stage 2 only: build HTML report from existing CSVs
+python analysis/run_analytic_pipeline.py --stage report
+```
 
 Primary outputs:
 
@@ -115,6 +173,7 @@ Primary outputs:
 - `shared-data/analysis_batch_table.csv`
 - `shared-data/analysis_language_workload_summary.csv`
 - `reports/analysis_summary.md`
+- `reports/benchmark_report.html`
 
 ## Portfolio/Analysis Guidance
 
