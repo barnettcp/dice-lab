@@ -1,11 +1,11 @@
 {% import "macros.html" as m %}
 
 <section class="section" id="per-language">
-<h2>5 &mdash; Per-Language Scaling</h2>
+<h2>5. Per-Language Scaling</h2>
 
 <p>
 The cross-language view in the previous section shows the <em>relative</em>
-picture across all languages at once.  This section zooms into each
+picture across all languages at once. This section zooms into each
 language individually, revealing the shape of its scaling curve and the
 distribution of individual trial times at each workload level.
 </p>
@@ -13,7 +13,7 @@ distribution of individual trial times at each workload level.
 {{ m.chart_tip(
     "Select a language from the dropdown to load its charts.  "
     ~ "Within each language, use the workload dropdown to see "
-    ~ "individual trial-time histograms.  Hover for exact values."
+    ~ "individual trial-time ridgeplots and histograms.  Hover for exact values."
 ) }}
 {{ m.dropdown("Select language:", "lang-select", "lang", per_lang.language_options) }}
 
@@ -31,24 +31,46 @@ distribution of individual trial times at each workload level.
   <p>
     Each ridge below shows the full timing distribution (KDE) at a given
     workload level, with the largest workload (1&nbsp;M rolls) at the bottom.
-    A dot on each baseline marks the mean.  Hover anywhere on a ridge for
-    summary statistics (mean, std, CV).  Distributions that narrow and shift
-    left as workloads decrease indicate stable, predictable scaling.
+    A dot on each baseline marks the mean, providing another way to visually
+    see how the language scales up as the workload increases. Hover anywhere 
+    on a ridge for summary statistics (mean, std, CV). Distributions that narrow
+    and shift left as workloads decrease indicate stable, predictable scaling.
   </p>
   {{ lang.scale_chart | safe }}
 
   <h4>Trial Distribution by Workload</h4>
   <p>
     Select a workload below to examine the histogram of individual trial
-    times.  A tight, symmetric histogram indicates stable timing.
+    times. A tight, symmetric histogram indicates stable timing.
     A long right tail implies occasional outlier runs &mdash; likely from OS
-    scheduling preemptions or, in Java&rsquo;s case, JIT compilation events.
+    scheduling preemptions or, in Java&rsquo;s case, JIT compilation events. Along
+    the x-axis, individual run times are marked as a rug plot to show how the raw
+    data translates into the histogram, as well as visually inspect for interesting clusters.
   </p>
   {{ m.dropdown("Select workload:", lang.key ~ "-hist-select",
                 lang.key ~ "-hist", per_lang.workload_options) }}
   {% for wl in per_lang.workloads %}
   <div id="{{ lang.key }}-hist-{{ wl }}" class="chart-panel{{ ' active' if loop.first else '' }}">
     {{ lang.hist_charts[wl] | safe }}
+  </div>
+  {% endfor %}
+
+  <h4>Trial Sequence by Workload</h4>
+  <p>
+    Each point in this chart represents one timed trial plotted in the order
+    it was executed within its batch run. Faint lines show individual batch
+    runs; the bold line is the cross-batch mean at each trial position. A
+    mean line that slopes downward from left to right is the hallmark of a
+    warm-up effect: the runtime gets faster once CPU caches and (for
+    Java) the JIT compiler have optimised the hot path. Slow trials scattered
+    randomly across positions instead point to OS scheduling noise rather
+    than warm-up.
+  </p>
+  {{ m.dropdown("Select workload:", lang.key ~ "-seq-select",
+                lang.key ~ "-seq", per_lang.workload_options) }}
+  {% for wl in per_lang.workloads %}
+  <div id="{{ lang.key }}-seq-{{ wl }}" class="chart-panel{{ ' active' if loop.first else '' }}">
+    {{ lang.seq_charts[wl] | safe }}
   </div>
   {% endfor %}
 

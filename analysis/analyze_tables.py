@@ -395,6 +395,124 @@ def plot_trial_histogram_within_language(
     return fig
 
 
+def plot_trial_sequence_within_language(
+    run_table: pd.DataFrame,
+    language: str,
+    rolls: int,
+    window: int = 5,
+) -> go.Figure:
+    """Elapsed time by trial position to surface warm-up and sequence effects.
+
+    Plots each trial's elapsed time in the order it was executed within its
+    batch run.  Individual batch runs are drawn as faint lines so run-to-run
+    variation is visible without dominating the chart.  A bold per-position
+    mean and rolling mean overlay reveal whether early trials are
+    systematically slower — the signature of JIT warm-up (Java), cold
+    instruction-cache effects (C++), or OS scheduling artefacts.
+
+    Interpret the chart as follows:
+
+    * **Early trials consistently above the mean line** — warm-up effect;
+      the runtime is faster once the CPU caches and (for Java) the JIT
+      compiler have had a chance to optimise the hot path.
+    * **No positional pattern, slow trials scattered randomly** — the
+      bimodal shape in the histogram is more likely due to OS scheduling
+      interruptions than warm-up.
+    * **Last trials drifting upward** — possible thermal throttling as the
+      CPU heats up toward the end of a batch.
+
+    Args:
+        run_table: Per-trial DataFrame from :func:`load_run_table`.
+        language: Language identifier to plot (e.g. ``"java"``).
+        rolls: Workload level to isolate (must exist in the table).
+        window: Rolling window size for the mean overlay.  Smaller values
+            (3–5) are reactive; larger values (10+) show broad trend only.
+
+    Returns:
+        Plotly figure with trial position on the x-axis and elapsed time
+        on the y-axis.
+    """
+    subset = run_table[
+        (run_table["language"] == language) & (run_table["rolls"] == rolls)
+    ].copy()
+
+    color = LANGUAGE_COLORS.get(language, "#888888")
+    display = LANGUAGE_DISPLAY.get(language, language)
+    label = WORKLOAD_LABELS.get(rolls, str(rolls))
+
+    fig = go.Figure()
+
+    # ── Individual batch runs as faint background lines ──────────────────────
+    for batch_id, batch_df in subset.sort_values("trial_id").groupby("batch_run_id"):
+        batch_df = batch_df.sort_values("trial_id")
+        fig.add_trace(go.Scatter(
+            x=batch_df["trial_id"],
+            y=batch_df["elapsed_ms"],
+            mode="lines+markers",
+            line=dict(color=hex_to_rgba(color, alpha=0.12), width=1),
+            marker=dict(size=3, color=hex_to_rgba(color, alpha=0.18)),
+            showlegend=False,
+            hovertemplate=(
+                f"Batch {batch_id}<br>"
+                "Trial: %{x}<br>"
+                "Elapsed: %{y:.4f} ms<extra></extra>"
+            ),
+        ))
+
+    # ── Cross-batch mean per trial position ──────────────────────────────────
+    mean_by_trial = (
+        subset.groupby("trial_id")["elapsed_ms"]
+        .mean()
+        .reset_index()
+        .sort_values("trial_id")
+    )
+
+    # Rolling mean overlay (requires at least `window` data points)
+    if len(mean_by_trial) >= window:
+        mean_by_trial["roll_mean"] = (
+            mean_by_trial["elapsed_ms"]
+            .rolling(window, min_periods=window)
+            .mean()
+        )
+        fig.add_trace(go.Scatter(
+            x=mean_by_trial["trial_id"],
+            y=mean_by_trial["roll_mean"],
+            mode="lines",
+            name=f"MA({window}) of mean",
+            line=dict(color=hex_to_rgba(color, alpha=0.55), width=2, dash="dot"),
+            hovertemplate=(
+                "Trial: %{x}<br>"
+                f"MA({window}): %{{y:.4f}} ms<extra></extra>"
+            ),
+        ))
+
+    fig.add_trace(go.Scatter(
+        x=mean_by_trial["trial_id"],
+        y=mean_by_trial["elapsed_ms"],
+        mode="lines+markers",
+        name="Mean per trial position",
+        line=dict(color=color, width=2.5),
+        marker=dict(size=7, color=color, line=dict(width=1, color="white")),
+        hovertemplate=(
+            "Trial: %{x}<br>"
+            "Mean elapsed: %{y:.4f} ms<extra></extra>"
+        ),
+    ))
+
+    fig.update_layout(
+        title=(
+            f"Trial Sequence — {display} at {label} rolls"
+            "<br><sup>Faint lines = individual batch runs &nbsp;·&nbsp; "
+            "bold = cross-batch mean per trial position</sup>"
+        ),
+        xaxis_title="Trial position within batch",
+        yaxis_title="Elapsed time (ms)",
+        template="plotly_white",
+        legend=dict(orientation="h", yanchor="top", y=-0.2, xanchor="center", x=0.5),
+    )
+    return fig
+
+
 # ---------------------------------------------------------------------------
 # Cross-language plots
 # ---------------------------------------------------------------------------
@@ -977,7 +1095,7 @@ def plot_ridgeline(
         ),
         legend_title="Language",
         template="plotly_white",
-        hovermode="x unified",
+        hovermode="closest",
     )
     return fig
 
