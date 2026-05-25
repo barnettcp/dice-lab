@@ -66,6 +66,7 @@ from analyze_tables import (  # noqa: E402 — must follow sys.path insertion
     plot_ridgeline_by_workload,
     plot_scaling_within_language,
     plot_trial_histogram_within_language,
+    plot_trial_sequence_within_language,
 )
 
 # ---------------------------------------------------------------------------
@@ -309,6 +310,12 @@ def _build_per_language_context(run_table, workload_summary) -> dict:
                 plot_trial_histogram_within_language(run_table, lang, rolls)
             )
 
+        seq_charts = {}
+        for rolls in WORKLOADS:
+            seq_charts[str(rolls)] = _fig_to_html(
+                plot_trial_sequence_within_language(run_table, lang, rolls)
+            )
+
         languages.append({
             "key": lang,
             "display": display,
@@ -321,6 +328,7 @@ def _build_per_language_context(run_table, workload_summary) -> dict:
             ],
             "scale_chart": scale_chart,
             "hist_charts": hist_charts,
+            "seq_charts": seq_charts,
         })
 
     return {
