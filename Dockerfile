@@ -95,9 +95,11 @@ RUN mkdir -p shared-data reports benchmarks/results
 # 2. Run benchmarks across all languages.
 # 3. Run the analysis pipeline to produce CSVs and the HTML report.
 CMD ["sh", "-c", "\
-  cp -r /opt/dice-lab-assets reports/assets \
+  cp -r /opt/dice-lab-assets/. reports/assets \
   && python benchmarks/benchmark_runner.py \
     --languages python cpp rust go java \
+    --runs 10 \
+    --batch-runs 100 \
     --output benchmarks/results/benchmark_report.json \
   && python analysis/run_analytic_pipeline.py \
 "]

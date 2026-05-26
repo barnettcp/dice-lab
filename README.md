@@ -93,6 +93,21 @@ Primary outputs written to your local repo:
 
 > These output files are `.gitignore`d by default.  Commit curated snapshots intentionally if needed.
 
+### Custom runs and batch counts
+
+To override the default run/batch counts, pass a custom `sh -c` command to the container.  The example below runs 10 trials per workload across 100 batches:
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "$(pwd -W)/reports:/app/reports" \
+  -v "$(pwd -W)/shared-data:/app/shared-data" \
+  -v "$(pwd -W)/benchmarks/results:/app/benchmarks/results" \
+  dice-lab \
+  sh -c "python benchmarks/benchmark_runner.py --languages python cpp rust go java --runs 10 --batch-runs 100 --output benchmarks/results/benchmark_report.json && python analysis/run_analytic_pipeline.py"
+```
+
+> **Windows/Git Bash note:** `MSYS_NO_PATHCONV=1` and `pwd -W` prevent Git Bash from mangling the volume mount paths.  Omit both if running from WSL or a native Linux shell.
+
 ## Running Locally (Without Docker)
 
 Run each implementation from its own folder and follow that folder's README for exact commands:

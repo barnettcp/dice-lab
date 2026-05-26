@@ -22,6 +22,7 @@ __pycache__
 *.pyo
 
 # Generated outputs (rebuilt inside container)
+reports/assets/dice-lab-assets
 shared-data/*.csv
 shared-data/*.tsv
 shared-data/*.json
