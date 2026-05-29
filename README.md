@@ -62,7 +62,7 @@ docker build -t dice-lab .
 
 ### Run the full pipeline
 
-The default `CMD` runs benchmarks across all languages and then produces the complete analysis outputs.  Mount the standard output directories to retrieve generated files on the host:
+The default `CMD` runs all five languages, 10 trials per workload, across 100 batches, then produces the complete analysis outputs.  Mount the standard output directories to retrieve generated files on the host:
 
 ```bash
 docker run --rm \
@@ -82,6 +82,18 @@ docker run --rm ^
   dice-lab
 ```
 
+On Windows (Git Bash):
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "$(pwd -W)/reports:/app/reports" \
+  -v "$(pwd -W)/shared-data:/app/shared-data" \
+  -v "$(pwd -W)/benchmarks/results:/app/benchmarks/results" \
+  dice-lab
+```
+
+> **Git Bash note:** `MSYS_NO_PATHCONV=1` and `pwd -W` prevent Git Bash from mangling the volume mount paths into invalid host paths.
+
 Primary outputs written to your local repo:
 
 - `benchmarks/results/benchmark_report.json`
@@ -93,9 +105,9 @@ Primary outputs written to your local repo:
 
 > These output files are `.gitignore`d by default.  Commit curated snapshots intentionally if needed.
 
-### Custom runs and batch counts
+### Overriding runs and batch counts
 
-To override the default run/batch counts, pass a custom `sh -c` command to the container.  The example below runs 10 trials per workload across 100 batches:
+To run with different values than the defaults (10 runs, 100 batches), pass a custom `sh -c` command to override the image's `CMD`.  The example below runs a quick 3-trial, 5-batch smoke test:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run --rm \
@@ -103,10 +115,10 @@ MSYS_NO_PATHCONV=1 docker run --rm \
   -v "$(pwd -W)/shared-data:/app/shared-data" \
   -v "$(pwd -W)/benchmarks/results:/app/benchmarks/results" \
   dice-lab \
-  sh -c "python benchmarks/benchmark_runner.py --languages python cpp rust go java --runs 10 --batch-runs 100 --output benchmarks/results/benchmark_report.json && python analysis/run_analytic_pipeline.py"
+  sh -c "python benchmarks/benchmark_runner.py --languages python cpp rust go java --runs 3 --batch-runs 5 --output benchmarks/results/benchmark_report.json && python analysis/run_analytic_pipeline.py"
 ```
 
-> **Windows/Git Bash note:** `MSYS_NO_PATHCONV=1` and `pwd -W` prevent Git Bash from mangling the volume mount paths.  Omit both if running from WSL or a native Linux shell.
+> Omit `MSYS_NO_PATHCONV=1` and use `$(pwd)` instead of `$(pwd -W)` when running from WSL or a native Linux shell.
 
 ## Running Locally (Without Docker)
 
