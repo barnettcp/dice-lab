@@ -115,7 +115,7 @@ MSYS_NO_PATHCONV=1 docker run --rm \
   -v "$(pwd -W)/shared-data:/app/shared-data" \
   -v "$(pwd -W)/benchmarks/results:/app/benchmarks/results" \
   dice-lab \
-  sh -c "python benchmarks/benchmark_runner.py --languages python cpp rust go java --runs 3 --batch-runs 5 --output benchmarks/results/benchmark_report.json && python analysis/run_analytic_pipeline.py"
+  sh -c "python benchmarks/benchmark_runner.py --languages python cpp rust go java --runs 3 --batch-runs 5 --output benchmarks/results/benchmark_report.json && python analysis/run_pipeline.py"
 ```
 
 > Omit `MSYS_NO_PATHCONV=1` and use `$(pwd)` instead of `$(pwd -W)` when running from WSL or a native Linux shell.
@@ -181,17 +181,17 @@ Analysis is implemented in [analysis](analysis) and follows [spec/analysis_spec.
 The recommended entry point is the pipeline orchestrator, which runs both stages in sequence (CSV exports → HTML report):
 
 ```bash
-python analysis/run_analytic_pipeline.py
+python analysis/run_pipeline.py
 ```
 
 Individual stages can also be run separately:
 
 ```bash
 # Stage 1 only: build CSVs and markdown summary
-python analysis/run_analysis.py
+python analysis/run_export.py
 
 # Stage 2 only: build HTML report from existing CSVs
-python analysis/run_analytic_pipeline.py --stage report
+python analysis/run_pipeline.py --stage report
 ```
 
 Primary outputs:

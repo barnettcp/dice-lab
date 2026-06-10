@@ -1,7 +1,7 @@
 """Analysis and visualization functions for DiceLab benchmark tables.
 
 This module consumes the three canonical CSV tables produced by
-``analysis/run_analysis.py`` (written to ``shared-data/``) and exposes:
+``analysis/run_export.py`` (written to ``shared-data/``) and exposes:
 
 1. **Loading helpers** — read each CSV into a typed :class:`pandas.DataFrame`.
 2. **Within-language analysis** — how a single language's timing scales with
@@ -19,7 +19,7 @@ passed directly to Streamlit (``st.plotly_chart(fig)``) without modification.
 Typical usage::
 
     from pathlib import Path
-    from analyze_tables import (
+    from charts import (
         load_run_table,
         load_workload_summary,
         load_batch_table,
