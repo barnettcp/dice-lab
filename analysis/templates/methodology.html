@@ -47,7 +47,7 @@ downstream steps become critical to a successful analysis.
   </li>
   <li>
     <strong>Analysis pipeline.</strong>  Running
-    <code>python analysis/run_analysis.py</code> normalises the JSON into
+    <code>python analysis/run_export.py</code> normalises the JSON into
     three canonical CSV tables under <code>shared-data/</code>:
     <ul>
       <li><strong>Run table</strong> &mdash; {{ meth.n_rows }} rows, one per timed
@@ -60,7 +60,7 @@ downstream steps become critical to a successful analysis.
   </li>
   <li>
     <strong>Report generation.</strong>  This HTML report is built from those
-    CSVs by <code>python analysis/build_report.py</code>.  Charts are
+    CSVs by <code>python analysis/run_report.py</code>.  Charts are
     Plotly figures; prose and stats are computed at build time.
   </li>
 </ol>
