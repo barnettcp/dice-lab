@@ -24,11 +24,11 @@ self-contained HTML file.
 
 Typical usage (from repo root)::
 
-    python analysis/build_report.py
+    python analysis/run_report.py
 
 Custom paths::
 
-    python analysis/build_report.py \\
+    python analysis/run_report.py \\
         --shared-data shared-data \\
         --output reports/benchmark_report.html
 """
@@ -50,7 +50,7 @@ import yaml
 # the script is invoked from (repo root, CI, etc.).
 sys.path.insert(0, str(Path(__file__).parent))
 
-from analyze_tables import (  # noqa: E402 — must follow sys.path insertion
+from charts import (  # noqa: E402 — must follow sys.path insertion
     LANGUAGE_COLORS,
     WORKLOAD_LABELS,
     add_coefficient_of_variation,

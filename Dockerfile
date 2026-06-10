@@ -101,5 +101,5 @@ CMD ["sh", "-c", "\
     --runs 10 \
     --batch-runs 100 \
     --output benchmarks/results/benchmark_report.json \
-  && python analysis/run_analytic_pipeline.py \
+  && python analysis/run_pipeline.py \
 "]

@@ -2,7 +2,7 @@
 
 Runs both pipeline stages in sequence:
 
-1. **analysis** — reads the benchmark JSON report, builds the three canonical
+1. **export** — reads the benchmark JSON report, builds the three canonical
    DataFrames, writes normalised CSVs to ``shared-data/``, and renders a
    markdown summary to ``reports/analysis_summary.md``.
 
@@ -11,14 +11,14 @@ Runs both pipeline stages in sequence:
 
 Usage (from repo root)::
 
-    python analysis/run_analytic_pipeline.py
+    python analysis/run_pipeline.py
 
     # Run a single stage:
-    python analysis/run_analytic_pipeline.py --stage analysis
-    python analysis/run_analytic_pipeline.py --stage report
+    python analysis/run_pipeline.py --stage export
+    python analysis/run_pipeline.py --stage report
 
     # Override paths:
-    python analysis/run_analytic_pipeline.py \\
+    python analysis/run_pipeline.py \\
         --input benchmarks/results/benchmark_report.json \\
         --shared-data shared-data \\
         --reports reports
@@ -28,8 +28,8 @@ from __future__ import annotations
 
 import argparse
 
-import build_report
-import run_analysis
+import run_report
+import run_export
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -44,7 +44,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ``reports``, and ``stage`` attributes.
     """
     parser = argparse.ArgumentParser(
-        prog="run-analytic-pipeline",
+        prog="run-pipeline",
         description="Run the full DiceLab analysis pipeline: JSON → CSVs → HTML report.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -68,7 +68,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--stage",
-        choices=["all", "analysis", "report"],
+        choices=["all", "export", "report"],
         default="all",
         help="Pipeline stage to run.",
     )
@@ -87,9 +87,9 @@ def main(argv: list[str] | None = None) -> int:
     """
     args = parse_args(argv)
 
-    if args.stage in ("all", "analysis"):
-        print("--- Stage 1/2: analysis ---")
-        rc = run_analysis.main([
+    if args.stage in ("all", "export"):
+        print("--- Stage 1/2: export ---")
+        rc = run_export.main([
             "--input", args.input,
             "--shared-output-dir", args.shared_data,
             "--report-output", f"{args.reports}/analysis_summary.md",
@@ -99,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.stage in ("all", "report"):
         print("--- Stage 2/2: report ---")
-        build_report.main([
+        run_report.main([
             "--shared-data", args.shared_data,
             "--output", f"{args.reports}/benchmark_report.html",
         ])

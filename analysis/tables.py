@@ -11,6 +11,10 @@ Canonical tables produced here are defined in ``spec/analysis_spec.md``:
 - **run_table** — one row per individual timing trial.
 - **batch_table** — one row per macro benchmark batch.
 - **metadata_table** — single-row configuration / environment snapshot.
+
+Import as::
+
+    from tables import build_frames, load_report, summarize_language_workloads
 """
 
 from __future__ import annotations

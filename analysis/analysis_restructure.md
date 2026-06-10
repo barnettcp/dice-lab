@@ -92,17 +92,17 @@ These must also be updated as part of the refactor:
 
 ## Execution Checklist
 
-- [ ] Commit working baseline on `main` before branching
-- [ ] Create branch `refactor/analysis-module-naming`
-- [ ] Rename the five `.py` files
-- [ ] Update all imports within `analysis/`
-- [ ] Update `Dockerfile` CMD
-- [ ] Update `README.md`
-- [ ] Update `analysis/README.md`
-- [ ] Review `spec/analysis_spec.md` for name references
-- [ ] Review `visualization_sandbox.ipynb` for imports
-- [ ] Run `python analysis/run_pipeline.py --stage analysis` (stage 1 only)
-- [ ] Run `python analysis/run_pipeline.py --stage report` (stage 2 only)
-- [ ] Run `python analysis/run_pipeline.py` (full pipeline)
+- [x] Commit working baseline on `main` before branching
+- [x] Create branch `refactor/analysis-module-naming`
+- [x] Rename the five `.py` files
+- [x] Update all imports within `analysis/`
+- [x] Update `Dockerfile` CMD
+- [x] Update `README.md`
+- [x] Update `analysis/README.md`
+- [x] Review `spec/analysis_spec.md` for name references (none found)
+- [x] Review `visualization_sandbox.ipynb` for imports (none found)
+- [x] Run `python analysis/run_pipeline.py --stage export` (stage 1 only)
+- [x] Run `python analysis/run_pipeline.py --stage report` (stage 2 only)
+- [x] Run `python analysis/run_pipeline.py` (full pipeline)
 - [ ] Run Docker pipeline end-to-end to confirm no regressions
 - [ ] Delete this file or convert it to an ADR once complete
