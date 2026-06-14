@@ -29,7 +29,7 @@ RUN cargo build --release
 # ---------------------------------------------------------------------------
 # Stage 3: Go builder
 # ---------------------------------------------------------------------------
-FROM golang:1.24 AS go-builder
+FROM golang:1.24.13 AS go-builder
 WORKDIR /build
 COPY implementations/go/go.mod .
 COPY implementations/go/main.go .
@@ -46,7 +46,7 @@ RUN mkdir -p out && javac -d out src/DiceLab.java
 # ---------------------------------------------------------------------------
 # Stage 5: Final runtime image
 # ---------------------------------------------------------------------------
-FROM python:3.13-slim AS final
+FROM python:3.13.14-slim AS final
 
 # Install a headless JRE for running compiled Java bytecode.
 RUN apt-get update \

@@ -54,6 +54,8 @@ This keeps the repository clean, portable, and collaboration-friendly.
 
 The [Dockerfile](Dockerfile) is a multi-stage build that compiles all five language implementations and packages them with the Python benchmark runner and analysis pipeline into a single image.  This is the easiest way to reproduce results without installing each language toolchain locally.
 
+> **Security note:** This image is intended for local, educational use — running simulations and generating a static analysis report.  It is not hardened for production or internet-facing deployment.  Base image CVEs reported by scanners are largely upstream OS-level packages outside this project's control; rebuild periodically with `docker build --no-cache` to pick up the latest patched base images.
+
 ### Build the image
 
 ```bash
